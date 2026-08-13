@@ -1,7 +1,7 @@
 import { normalizeSearchQuery } from './normalize-search-query';
 
 describe('normalizeSearchQuery', () => {
-  const cases: Array<[string, string]> = [
+  const cases: [string, string][] = [
     ['  cats  ', 'cats'],
     ['cats   and   dogs', 'cats and dogs'],
     ['', ''],
