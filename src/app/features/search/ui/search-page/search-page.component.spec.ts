@@ -6,6 +6,7 @@ import { SearchFacade } from '../../search.facade';
 import { QueryHistoryFacade } from '../../../query-history/query-history.facade';
 import { SearchResult } from '../../domain/search-result.model';
 import { SearchResultsList } from '../search-results-list/search-results-list.component';
+import { ImageEditorFacade } from '../../../image-editor/image-editor.facade';
 
 function makeFacadeStub(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -29,6 +30,7 @@ describe('SearchPage', () => {
       providers: [
         { provide: SearchFacade, useValue: makeFacadeStub(facadeOverrides) },
         { provide: QueryHistoryFacade, useValue: { entries: () => [] } },
+        { provide: ImageEditorFacade, useValue: { open: vi.fn() } },
       ],
     });
   }
@@ -158,5 +160,31 @@ describe('SearchPage', () => {
 
     const facade = TestBed.inject(SearchFacade);
     expect(facade.loadNextPage).toHaveBeenCalled();
+  });
+
+  it('opens the image editor dialog via the facade, when a result is selected', () => {
+    const result: SearchResult = {
+      id: '1',
+      title: 'A cat',
+      imageUrl: 'https://x/full.jpg',
+      thumbnailUrl: '',
+      width: 0,
+      height: 0,
+      creator: null,
+      sourceUrl: '',
+    };
+    configure({ status$: of('success'), results$: of([result]), hasMoreResults$: of(true) });
+    const fixture = TestBed.createComponent(SearchPage);
+    fixture.detectChanges();
+
+    const resultsList = fixture.debugElement.query(By.directive(SearchResultsList));
+    (resultsList.componentInstance as SearchResultsList).resultSelected.emit(result);
+
+    const imageEditorFacade = TestBed.inject(ImageEditorFacade);
+    expect(imageEditorFacade.open).toHaveBeenCalledWith({
+      imageId: '1',
+      imageUrl: 'https://x/full.jpg',
+      title: 'A cat',
+    });
   });
 });

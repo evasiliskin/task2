@@ -1,0 +1,45 @@
+<div class="polygon-canvas">
+  <div class="polygon-canvas__stage">
+    <img #imageEl class="polygon-canvas__image" [src]="imageUrl()" [alt]="imageAlt()" />
+    <canvas
+      #canvasEl
+      class="polygon-canvas__overlay"
+      (pointerdown)="onPointerDown($event)"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp($event)"
+      (pointercancel)="onPointerUp($event)"
+      (dblclick)="onCanvasDoubleClick()"
+    ></canvas>
+  </div>
+
+  @if (!polygon()) {
+    <div class="polygon-canvas__draw-controls">
+      <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
+        @if (drawPoints().length === 0) {
+          Click the image to start drawing a polygon.
+        } @else {
+          {{ drawPoints().length }} point(s) placed — add at least {{ minPoints }} to finish.
+        }
+      </span>
+      <button
+        type="button"
+        nz-button
+        nzSize="small"
+        nzType="primary"
+        [disabled]="drawPoints().length < minPoints"
+        (click)="onFinishDraw()"
+      >
+        Finish polygon
+      </button>
+      <button
+        type="button"
+        nz-button
+        nzSize="small"
+        [disabled]="drawPoints().length === 0"
+        (click)="onCancelDraw()"
+      >
+        Clear points
+      </button>
+    </div>
+  }
+</div>

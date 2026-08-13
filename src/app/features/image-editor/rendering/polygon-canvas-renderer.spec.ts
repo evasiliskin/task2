@@ -150,4 +150,53 @@ describe('PolygonCanvasRenderer', () => {
       customOptions.strokeColor,
     ]);
   });
+
+  describe('renderDrawPreview', () => {
+    it('should clear the canvas and draw nothing else, when there are no points', () => {
+      const context = createMockContext();
+
+      new PolygonCanvasRenderer().renderDrawPreview(context, [], boxSize);
+
+      expect(context.clearRect).toHaveBeenCalledWith(0, 0, 100, 100);
+      expect(context.moveTo).not.toHaveBeenCalled();
+      expect(context.arc).not.toHaveBeenCalled();
+    });
+
+    it('should draw an open polyline through each pixel-space point without closing it, when points are given', () => {
+      const context = createMockContext();
+      const points = [
+        { x: 0.4, y: 0.4 },
+        { x: 0.6, y: 0.4 },
+        { x: 0.5, y: 0.6 },
+      ];
+
+      new PolygonCanvasRenderer().renderDrawPreview(context, points, boxSize);
+
+      expect(context.moveTo).toHaveBeenCalledWith(40, 40);
+      expect(context.lineTo).toHaveBeenNthCalledWith(1, 60, 40);
+      expect(context.lineTo).toHaveBeenNthCalledWith(2, 50, 60);
+      expect(context.closePath).not.toHaveBeenCalled();
+      expect(context.stroke).toHaveBeenCalled();
+    });
+
+    it('should draw a vertex marker at each placed point, when points are given', () => {
+      const context = createMockContext();
+      const points = [{ x: 0.4, y: 0.4 }];
+
+      new PolygonCanvasRenderer().renderDrawPreview(
+        context,
+        points,
+        boxSize,
+        DEFAULT_POLYGON_RENDER_OPTIONS,
+      );
+
+      expect(context.arc).toHaveBeenCalledWith(
+        40,
+        40,
+        DEFAULT_POLYGON_RENDER_OPTIONS.vertexRadius,
+        0,
+        Math.PI * 2,
+      );
+    });
+  });
 });

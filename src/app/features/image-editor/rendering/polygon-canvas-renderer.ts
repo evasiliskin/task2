@@ -2,6 +2,7 @@ import { CanvasBoxSize, PixelPoint } from '../domain/geometry/coordinate-mapping
 import { getRotationHandlePoint } from '../domain/geometry/get-rotation-handle-point';
 import { getWorldPoints } from '../domain/geometry/get-world-points';
 import { toPixelPoint } from '../domain/geometry/to-pixel-point';
+import { NormalizedPoint } from '../domain/normalized-point.model';
 import { Polygon } from '../domain/polygon.model';
 import { DEFAULT_POLYGON_RENDER_OPTIONS, PolygonRenderOptions } from './polygon-render-options';
 
@@ -28,6 +29,40 @@ export class PolygonCanvasRenderer {
       this.drawOutline(context, pixelPoints, options);
       this.drawVertices(context, pixelPoints, options);
       this.drawRotationHandle(context, polygon, boxSize, aspectRatio, options);
+    } finally {
+      context.restore();
+    }
+  }
+
+  renderDrawPreview(
+    context: CanvasRenderingContext2D,
+    points: readonly NormalizedPoint[],
+    boxSize: CanvasBoxSize,
+    options: PolygonRenderOptions = DEFAULT_POLYGON_RENDER_OPTIONS,
+  ): void {
+    context.save();
+    try {
+      context.clearRect(0, 0, boxSize.width, boxSize.height);
+
+      if (points.length === 0) {
+        return;
+      }
+
+      const pixelPoints = points.map((point) => toPixelPoint(point, boxSize));
+
+      context.beginPath();
+      pixelPoints.forEach((point, index) => {
+        if (index === 0) {
+          context.moveTo(point.x, point.y);
+        } else {
+          context.lineTo(point.x, point.y);
+        }
+      });
+      context.strokeStyle = options.strokeColor;
+      context.lineWidth = options.lineWidth;
+      context.stroke();
+
+      this.drawVertices(context, pixelPoints, options);
     } finally {
       context.restore();
     }

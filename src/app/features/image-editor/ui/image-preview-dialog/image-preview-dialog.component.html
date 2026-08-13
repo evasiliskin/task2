@@ -1,0 +1,8 @@
+<app-polygon-canvas
+  [imageUrl]="target.imageUrl"
+  [imageAlt]="target.title"
+  [polygon]="polygon()"
+  (polygonDrawn)="onPolygonDrawn($event)"
+  (polygonMoved)="onPolygonMoved($event)"
+  (polygonRotated)="onPolygonRotated($event)"
+/>

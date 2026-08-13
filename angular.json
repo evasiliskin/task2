@@ -63,6 +63,7 @@
               "./node_modules/ng-zorro-antd/empty/style/index.min.css",
               "./node_modules/ng-zorro-antd/button/style/index.min.css",
               "./node_modules/ng-zorro-antd/alert/style/index.min.css",
+              "./node_modules/ng-zorro-antd/modal/style/index.min.css",
               "src/styles.scss"
             ]
           },
