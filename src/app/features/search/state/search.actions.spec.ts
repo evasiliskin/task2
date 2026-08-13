@@ -1,4 +1,3 @@
-import '@angular/compiler';
 import { SearchPageActions, SearchActions, SearchApiActions } from './search.actions';
 
 describe('search actions', () => {
