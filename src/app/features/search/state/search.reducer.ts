@@ -56,20 +56,26 @@ export const searchFeature = createFeature({
         ? { ...state, status: 'loadingMore' }
         : state,
     ),
-    on(SearchApiActions.loadResultsSuccess, (state, { page, results, totalCount, pageCount }) => {
-      const withResults =
-        page === 1
-          ? searchResultsAdapter.setAll(results, state)
-          : searchResultsAdapter.upsertMany(results, state);
-      return {
-        ...withResults,
-        status: 'success' as const,
-        error: null,
-        page,
-        totalCount,
-        pageCount,
-      };
-    }),
+    on(
+      SearchApiActions.loadResultsSuccess,
+      (state, { query, page, results, totalCount, pageCount }) => {
+        if (query !== state.activeQuery) {
+          return state;
+        }
+        const withResults =
+          page === 1
+            ? searchResultsAdapter.setAll(results, state)
+            : searchResultsAdapter.upsertMany(results, state);
+        return {
+          ...withResults,
+          status: 'success' as const,
+          error: null,
+          page,
+          totalCount,
+          pageCount,
+        };
+      },
+    ),
     on(SearchApiActions.loadResultsFailure, (state, { message }) => ({
       ...state,
       status: 'error' as const,

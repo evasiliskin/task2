@@ -54,10 +54,7 @@ export class SearchEffects {
     this.actions$.pipe(
       ofType(SearchPageActions.nextPageRequested),
       withLatestFrom(this.store.select(selectSearchState)),
-      filter(
-        ([, state]) =>
-          state.status === 'success' && state.page < state.pageCount && state.activeQuery !== null,
-      ),
+      filter(([, state]) => state.status === 'loadingMore' && state.activeQuery !== null),
       exhaustMap(([, state]) => this.loadPage(state.activeQuery as string, state.page + 1)),
     ),
   );

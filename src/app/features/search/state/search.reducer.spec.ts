@@ -18,6 +18,8 @@ function makeResult(id: string): SearchResult {
 }
 
 describe('search reducer', () => {
+  const activeCatsState = { ...initialState, activeQuery: 'cats' as const };
+
   it('returns the initial state for an unknown action', () => {
     const state = reducer(undefined, { type: '@@INIT' });
     expect(state.status).toBe('idle');
@@ -38,7 +40,7 @@ describe('search reducer', () => {
 
   it('replaces entities on a page-1 success', () => {
     const state = reducer(
-      initialState,
+      activeCatsState,
       SearchApiActions.loadResultsSuccess({
         query: 'cats',
         page: 1,
@@ -56,7 +58,7 @@ describe('search reducer', () => {
 
   it('appends entities on a page>1 success', () => {
     const afterPageOne = reducer(
-      initialState,
+      activeCatsState,
       SearchApiActions.loadResultsSuccess({
         query: 'cats',
         page: 1,
@@ -82,7 +84,7 @@ describe('search reducer', () => {
 
   it('sets an error message and status on failure without clearing existing results', () => {
     const afterPageOne = reducer(
-      initialState,
+      activeCatsState,
       SearchApiActions.loadResultsSuccess({
         query: 'cats',
         page: 1,
@@ -100,7 +102,7 @@ describe('search reducer', () => {
 
   it('resets to idle on queryCleared', () => {
     const afterPageOne = reducer(
-      initialState,
+      activeCatsState,
       SearchApiActions.loadResultsSuccess({
         query: 'cats',
         page: 1,
@@ -113,6 +115,28 @@ describe('search reducer', () => {
 
     expect(state.status).toBe('idle');
     expect(state.activeQuery).toBeNull();
+    expect(state.ids).toEqual([]);
+  });
+
+  it('ignores a loadResultsSuccess for a query that is no longer active', () => {
+    const afterDogsRequested = reducer(
+      initialState,
+      SearchActions.searchRequested({ query: 'dogs' }),
+    );
+
+    const state = reducer(
+      afterDogsRequested,
+      SearchApiActions.loadResultsSuccess({
+        query: 'cats',
+        page: 1,
+        results: [makeResult('1')],
+        totalCount: 50,
+        pageCount: 3,
+      }),
+    );
+
+    expect(state).toBe(afterDogsRequested);
+    expect(state.activeQuery).toBe('dogs');
     expect(state.ids).toEqual([]);
   });
 

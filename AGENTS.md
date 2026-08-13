@@ -385,7 +385,10 @@ Never implement a large feature without first understanding the existing
 architecture and stating a plan.
 
 Never commit changes in this repository, even if asked to or if it seems like
-the natural next step after finishing a task. The user commits manually.
+the natural next step after finishing a task. Never run `git commit` for any
+reason — not after a task, a task review, a phase, or a fix — regardless of
+what earlier commits in the branch's history look like. Stage changes with
+`git add` and stop there. The user reviews the diff and commits manually.
 
 ---
 

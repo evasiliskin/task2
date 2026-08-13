@@ -168,7 +168,13 @@ describe('SearchEffects', () => {
 
   it('loadNextPage$ requests the next page when one is available', async () => {
     store.setState({
-      search: { ...initialState, status: 'success', page: 1, pageCount: 3, activeQuery: 'cats' },
+      search: {
+        ...initialState,
+        status: 'loadingMore',
+        page: 1,
+        pageCount: 3,
+        activeQuery: 'cats',
+      },
     });
 
     const emitted = await new Promise((resolve) => {
