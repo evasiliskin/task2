@@ -1,0 +1,10 @@
+.home {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.home__card {
+  width: 100%;
+  max-width: 640px;
+}
