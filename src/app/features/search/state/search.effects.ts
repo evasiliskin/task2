@@ -64,7 +64,11 @@ export class SearchEffects {
       ofType(SearchActions.retryRequested),
       withLatestFrom(this.store.select(selectSearchState)),
       filter(([, state]) => state.activeQuery !== null),
-      map(([, state]) => SearchActions.searchRequested({ query: state.activeQuery as string })),
+      map(([, state]) =>
+        state.status === 'loadingMoreError'
+          ? SearchPageActions.nextPageRequested()
+          : SearchActions.searchRequested({ query: state.activeQuery as string }),
+      ),
     ),
   );
 

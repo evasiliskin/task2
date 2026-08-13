@@ -3,7 +3,8 @@ import { createFeature, createReducer, createSelector, on } from '@ngrx/store';
 import { SearchResult } from '../domain/search-result.model';
 import { SearchActions, SearchApiActions, SearchPageActions } from './search.actions';
 
-export type SearchStatus = 'idle' | 'loading' | 'loadingMore' | 'success' | 'error';
+export type SearchStatus =
+  'idle' | 'loading' | 'loadingMore' | 'success' | 'error' | 'loadingMoreError';
 
 export interface SearchState extends EntityState<SearchResult> {
   readonly activeQuery: string | null;
@@ -52,8 +53,9 @@ export const searchFeature = createFeature({
       }),
     ),
     on(SearchPageActions.nextPageRequested, (state) =>
-      state.status === 'success' && state.page < state.pageCount
-        ? { ...state, status: 'loadingMore' }
+      (state.status === 'success' || state.status === 'loadingMoreError') &&
+      state.page < state.pageCount
+        ? { ...state, status: 'loadingMore', error: null }
         : state,
     ),
     on(
@@ -76,11 +78,18 @@ export const searchFeature = createFeature({
         };
       },
     ),
-    on(SearchApiActions.loadResultsFailure, (state, { message }) => ({
-      ...state,
-      status: 'error' as const,
-      error: message,
-    })),
+    on(SearchApiActions.loadResultsFailure, (state, { message }) => {
+      if (state.status === 'loadingMore') {
+        return { ...state, status: 'loadingMoreError' as const, error: message };
+      }
+      if (state.status === 'loading') {
+        return { ...state, status: 'error' as const, error: message };
+      }
+      // A failure for a request nobody is waiting on anymore (e.g. an orphaned
+      // page-2 fetch that resolves after the query changed) must not clobber
+      // whatever the store has moved on to.
+      return state;
+    }),
   ),
   extraSelectors: ({ selectSearchState, selectStatus, selectPage, selectPageCount }) => ({
     ...searchResultsAdapter.getSelectors(selectSearchState),
@@ -90,6 +99,10 @@ export const searchFeature = createFeature({
       (page, pageCount) => page < pageCount,
     ),
     selectIsLoadingMore: createSelector(selectStatus, (status) => status === 'loadingMore'),
+    selectIsLoadingMoreError: createSelector(
+      selectStatus,
+      (status) => status === 'loadingMoreError',
+    ),
   }),
 });
 
@@ -104,4 +117,5 @@ export const {
   selectAll: selectSearchResults,
   selectHasMoreResults,
   selectIsLoadingMore,
+  selectIsLoadingMoreError,
 } = searchFeature;

@@ -20,7 +20,7 @@ describe('QueryHistoryEffects', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('records the query when page 1 returns at least one result', async () => {
+  it('should record the query, when page 1 returns at least one result', async () => {
     const emitted = await new Promise((resolve) => {
       effects.recordMeaningfulQuery$.subscribe(resolve);
       actions$.next(
@@ -39,7 +39,7 @@ describe('QueryHistoryEffects', () => {
     );
   });
 
-  it('does not record when the page returned zero results', () => {
+  it('should not record, when the page returned zero results', () => {
     const emitted: unknown[] = [];
     effects.recordMeaningfulQuery$.subscribe((action: unknown) => emitted.push(action));
     actions$.next(
@@ -55,7 +55,7 @@ describe('QueryHistoryEffects', () => {
     expect(emitted).toEqual([]);
   });
 
-  it('does not record for a page-2 (load more) success', () => {
+  it('should not record, when the success is for a page-2 (load more) result', () => {
     const emitted: unknown[] = [];
     effects.recordMeaningfulQuery$.subscribe((action: unknown) => emitted.push(action));
     actions$.next(

@@ -42,7 +42,7 @@ describe('SearchEffects', () => {
     vi.useRealTimers();
   });
 
-  it('debounces query typed events and ignores non-meaningful queries', () => {
+  it('should ignore non-meaningful queries, when debouncing query typed events', () => {
     const results: unknown[] = [];
     effects.debounceQuery$.subscribe((action) => results.push(action));
 
@@ -52,7 +52,7 @@ describe('SearchEffects', () => {
     expect(results).toEqual([SearchActions.queryCleared()]);
   });
 
-  it('dispatches searchRequested for a meaningful, debounced and normalized query', () => {
+  it('should dispatch searchRequested with the normalized query, when the debounced query is meaningful', () => {
     const results: unknown[] = [];
     effects.debounceQuery$.subscribe((action) => results.push(action));
 
@@ -62,7 +62,7 @@ describe('SearchEffects', () => {
     expect(results).toEqual([SearchActions.searchRequested({ query: 'cats' })]);
   });
 
-  it('collapses rapid keystrokes into a single request via debounce+distinctUntilChanged', () => {
+  it('should collapse rapid keystrokes into a single request, when queries are typed within the debounce window', () => {
     const results: unknown[] = [];
     effects.debounceQuery$.subscribe((action) => results.push(action));
 
@@ -76,7 +76,7 @@ describe('SearchEffects', () => {
     expect(results).toEqual([SearchActions.searchRequested({ query: 'cat' })]);
   });
 
-  it('performSearch$ maps a successful API response to loadResultsSuccess and caches it', async () => {
+  it('should map a successful API response to loadResultsSuccess and cache it, when performSearch$ runs', async () => {
     openverseApi.searchImages.mockReturnValue(
       of({
         result_count: 1,
@@ -128,7 +128,7 @@ describe('SearchEffects', () => {
     });
   });
 
-  it('performSearch$ maps a failed API response to loadResultsFailure', async () => {
+  it('should map a failed API response to loadResultsFailure, when performSearch$ runs', async () => {
     openverseApi.searchImages.mockReturnValue(throwError(() => ({ status: 500, message: 'boom' })));
 
     const emitted = await new Promise((resolve) => {
@@ -139,7 +139,7 @@ describe('SearchEffects', () => {
     expect(emitted).toEqual(SearchApiActions.loadResultsFailure({ message: 'boom' }));
   });
 
-  it('performSearch$ serves a cached page without calling the API', async () => {
+  it('should serve a cached page without calling the API, when performSearch$ finds a cache hit', async () => {
     const cachedPage = { results: [], totalCount: 5, pageCount: 1 };
     cache.get.mockReturnValue(cachedPage);
 
@@ -154,7 +154,7 @@ describe('SearchEffects', () => {
     expect(openverseApi.searchImages).not.toHaveBeenCalled();
   });
 
-  it('loadNextPage$ is a no-op when there is no next page', () => {
+  it('should be a no-op, when loadNextPage$ runs and there is no next page', () => {
     store.setState({
       search: { ...initialState, status: 'success', page: 3, pageCount: 3, activeQuery: 'cats' },
     });
@@ -166,7 +166,7 @@ describe('SearchEffects', () => {
     expect(results).toEqual([]);
   });
 
-  it('loadNextPage$ requests the next page when one is available', async () => {
+  it('should request the next page, when loadNextPage$ runs and one is available', async () => {
     store.setState({
       search: {
         ...initialState,
@@ -186,8 +186,8 @@ describe('SearchEffects', () => {
     expect((emitted as { page: number }).page).toBe(2);
   });
 
-  it('retry$ re-issues the active query', async () => {
-    store.setState({ search: { ...initialState, activeQuery: 'cats' } });
+  it('should re-issue the active query, when retry$ runs after an initial-search failure', async () => {
+    store.setState({ search: { ...initialState, status: 'error', activeQuery: 'cats' } });
 
     const emitted = await new Promise((resolve) => {
       effects.retry$.subscribe(resolve);
@@ -195,5 +195,18 @@ describe('SearchEffects', () => {
     });
 
     expect(emitted).toEqual(SearchActions.searchRequested({ query: 'cats' }));
+  });
+
+  it('should re-request just the next page, when retry$ runs after a load-more failure', async () => {
+    store.setState({
+      search: { ...initialState, status: 'loadingMoreError', activeQuery: 'cats', page: 1 },
+    });
+
+    const emitted = await new Promise((resolve) => {
+      effects.retry$.subscribe(resolve);
+      actions$.next(SearchActions.retryRequested());
+    });
+
+    expect(emitted).toEqual(SearchPageActions.nextPageRequested());
   });
 });

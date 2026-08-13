@@ -16,12 +16,12 @@ describe('Home', () => {
     fixture.detectChanges();
   });
 
-  it('renders the screening assignment heading', () => {
+  it('should render the screening assignment heading, when the component is initialized', () => {
     const heading = element.querySelector('h1');
     expect(heading?.textContent).toContain('Frontend Team Lead Screening');
   });
 
-  it('shows a foundation-ready status message via NG-ZORRO alert', () => {
+  it('should show a foundation-ready status message via NG-ZORRO alert, when the component is initialized', () => {
     const alert = element.querySelector('nz-alert');
     expect(alert?.textContent).toContain('Foundation ready');
   });

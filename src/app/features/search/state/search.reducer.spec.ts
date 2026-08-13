@@ -20,13 +20,13 @@ function makeResult(id: string): SearchResult {
 describe('search reducer', () => {
   const activeCatsState = { ...initialState, activeQuery: 'cats' as const };
 
-  it('returns the initial state for an unknown action', () => {
+  it('should return the initial state, when the action is unknown', () => {
     const state = reducer(undefined, { type: '@@INIT' });
     expect(state.status).toBe('idle');
     expect(state.ids).toEqual([]);
   });
 
-  it('clears previous results and sets status to loading on searchRequested', () => {
+  it('should clear previous results and set status to loading, when searchRequested is dispatched', () => {
     const withResults = searchResultsAdapter.setAll([makeResult('1')], {
       ...initialState,
       status: 'success' as const,
@@ -38,7 +38,7 @@ describe('search reducer', () => {
     expect(state.ids).toEqual([]);
   });
 
-  it('replaces entities on a page-1 success', () => {
+  it('should replace entities, when loadResultsSuccess is dispatched for page 1', () => {
     const state = reducer(
       activeCatsState,
       SearchApiActions.loadResultsSuccess({
@@ -56,7 +56,7 @@ describe('search reducer', () => {
     expect(state.pageCount).toBe(3);
   });
 
-  it('appends entities on a page>1 success', () => {
+  it('should append entities, when loadResultsSuccess is dispatched for a page greater than 1', () => {
     const afterPageOne = reducer(
       activeCatsState,
       SearchApiActions.loadResultsSuccess({
@@ -82,25 +82,45 @@ describe('search reducer', () => {
     expect(afterPageTwo.page).toBe(2);
   });
 
-  it('sets an error message and status on failure without clearing existing results', () => {
-    const afterPageOne = reducer(
-      activeCatsState,
-      SearchApiActions.loadResultsSuccess({
-        query: 'cats',
-        page: 1,
-        results: [makeResult('1')],
-        totalCount: 50,
-        pageCount: 3,
-      }),
-    );
-    const state = reducer(afterPageOne, SearchApiActions.loadResultsFailure({ message: 'boom' }));
+  it('should set an error message and status, when the initial search fails', () => {
+    const loadingState = { ...activeCatsState, status: 'loading' as const };
+    const state = reducer(loadingState, SearchApiActions.loadResultsFailure({ message: 'boom' }));
 
     expect(state.status).toBe('error');
+    expect(state.error).toBe('boom');
+  });
+
+  it('should ignore a stale failure, when nobody is waiting on the request anymore', () => {
+    const successState = {
+      ...activeCatsState,
+      ...searchResultsAdapter.setAll([makeResult('1')], activeCatsState),
+      status: 'success' as const,
+    };
+    const state = reducer(successState, SearchApiActions.loadResultsFailure({ message: 'boom' }));
+
+    expect(state).toBe(successState);
+  });
+
+  it('should set loadingMoreError (not error) and keep existing results, when a load-more request fails', () => {
+    const loadingMoreState = {
+      ...activeCatsState,
+      ...searchResultsAdapter.setAll([makeResult('1')], activeCatsState),
+      status: 'loadingMore' as const,
+      page: 1,
+      pageCount: 3,
+    };
+
+    const state = reducer(
+      loadingMoreState,
+      SearchApiActions.loadResultsFailure({ message: 'boom' }),
+    );
+
+    expect(state.status).toBe('loadingMoreError');
     expect(state.error).toBe('boom');
     expect(state.ids).toEqual(['1']);
   });
 
-  it('resets to idle on queryCleared', () => {
+  it('should reset to idle, when queryCleared is dispatched', () => {
     const afterPageOne = reducer(
       activeCatsState,
       SearchApiActions.loadResultsSuccess({
@@ -118,7 +138,7 @@ describe('search reducer', () => {
     expect(state.ids).toEqual([]);
   });
 
-  it('ignores a loadResultsSuccess for a query that is no longer active', () => {
+  it('should ignore loadResultsSuccess, when the query is no longer active', () => {
     const afterDogsRequested = reducer(
       initialState,
       SearchActions.searchRequested({ query: 'dogs' }),
@@ -140,22 +160,59 @@ describe('search reducer', () => {
     expect(state.ids).toEqual([]);
   });
 
-  it('moves to loadingMore only when there is a next page and the previous load succeeded', () => {
+  it('should move to loadingMore, when there is a next page and the previous load succeeded', () => {
     const canLoadMore = { ...initialState, status: 'success' as const, page: 1, pageCount: 3 };
     const noMorePages = { ...initialState, status: 'success' as const, page: 3, pageCount: 3 };
 
     expect(reducer(canLoadMore, SearchPageActions.nextPageRequested()).status).toBe('loadingMore');
     expect(reducer(noMorePages, SearchPageActions.nextPageRequested()).status).toBe('success');
   });
+
+  it('should move back to loadingMore without clearing results, when retrying a failed load-more', () => {
+    const canRetry = {
+      ...activeCatsState,
+      ...searchResultsAdapter.setAll([makeResult('1')], activeCatsState),
+      status: 'loadingMoreError' as const,
+      error: 'boom',
+      page: 1,
+      pageCount: 3,
+    };
+    const noMorePages = {
+      ...initialState,
+      status: 'loadingMoreError' as const,
+      page: 3,
+      pageCount: 3,
+    };
+
+    const state = reducer(canRetry, SearchPageActions.nextPageRequested());
+    expect(state.status).toBe('loadingMore');
+    expect(state.error).toBeNull();
+    expect(state.ids).toEqual(['1']);
+
+    expect(reducer(noMorePages, SearchPageActions.nextPageRequested()).status).toBe(
+      'loadingMoreError',
+    );
+  });
 });
 
 describe('search selectors', () => {
-  it('selectHasMoreResults is true only when page < pageCount', () => {
+  it('should return true only when page is less than pageCount, when selectHasMoreResults is selected', () => {
     expect(
       searchFeature.selectHasMoreResults({ search: { ...initialState, page: 1, pageCount: 3 } }),
     ).toBe(true);
     expect(
       searchFeature.selectHasMoreResults({ search: { ...initialState, page: 3, pageCount: 3 } }),
+    ).toBe(false);
+  });
+
+  it('should return true only when status is loadingMoreError, when selectIsLoadingMoreError is selected', () => {
+    expect(
+      searchFeature.selectIsLoadingMoreError({
+        search: { ...initialState, status: 'loadingMoreError' },
+      }),
+    ).toBe(true);
+    expect(
+      searchFeature.selectIsLoadingMoreError({ search: { ...initialState, status: 'error' } }),
     ).toBe(false);
   });
 });

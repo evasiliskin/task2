@@ -5,7 +5,7 @@ import { queryHistoryFeature } from './state/query-history.reducer';
 import { QueryHistoryActions } from './state/query-history.actions';
 
 describe('QueryHistoryFacade', () => {
-  it('exposes recorded entries as a signal', () => {
+  it('should expose recorded entries as a signal, when a query is recorded', () => {
     TestBed.configureTestingModule({
       providers: [provideStore(), provideState(queryHistoryFeature)],
     });

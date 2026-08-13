@@ -4,7 +4,7 @@ import { QueryHistoryActions } from './query-history.actions';
 const { reducer, initialState } = queryHistoryFeature;
 
 describe('query-history reducer', () => {
-  it('adds a new entry on queryRecorded', () => {
+  it('should add a new entry, when queryRecorded is dispatched for a new query', () => {
     const state = reducer(
       initialState,
       QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: 100 }),
@@ -13,7 +13,7 @@ describe('query-history reducer', () => {
     expect(state.entities['cats']).toEqual({ query: 'cats', lastUsedAt: 100 });
   });
 
-  it('updates lastUsedAt instead of duplicating an existing query', () => {
+  it('should update lastUsedAt instead of duplicating the entry, when queryRecorded is dispatched for an existing query', () => {
     const first = reducer(
       initialState,
       QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: 100 }),
@@ -27,7 +27,7 @@ describe('query-history reducer', () => {
     expect(second.entities['cats']?.lastUsedAt).toBe(200);
   });
 
-  it('treats queries that differ only by case as the same entity', () => {
+  it('should treat queries that differ only by case as the same entity, when queryRecorded is dispatched', () => {
     const first = reducer(
       initialState,
       QueryHistoryActions.queryRecorded({ query: 'Cats', usedAt: 100 }),
@@ -43,7 +43,7 @@ describe('query-history reducer', () => {
 });
 
 describe('query-history selectors', () => {
-  it('selectQueryHistoryEntries returns all recorded entries', () => {
+  it('should return all recorded entries, when selectQueryHistoryEntries is selected', () => {
     const state = reducer(
       initialState,
       QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: 100 }),

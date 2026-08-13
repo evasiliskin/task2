@@ -20,7 +20,7 @@ describe('httpErrorInterceptor', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('normalizes a server error into a user-safe message', () => {
+  it('should normalize a server error into a user-safe message, when the request returns a 500', () => {
     let captured: NormalizedHttpError | undefined;
 
     http.get('/test').subscribe({ error: (error: NormalizedHttpError) => (captured = error) });
@@ -35,7 +35,7 @@ describe('httpErrorInterceptor', () => {
     });
   });
 
-  it('normalizes a network error (status 0)', () => {
+  it('should normalize a network error, when the request fails with status 0', () => {
     let captured: NormalizedHttpError | undefined;
 
     http.get('/test').subscribe({ error: (error: NormalizedHttpError) => (captured = error) });

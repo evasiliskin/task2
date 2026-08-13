@@ -24,7 +24,7 @@ function configure() {
 }
 
 describe('query-history state integration (real store + real reducer + real effects)', () => {
-  it('records a history entry once a first-page search succeeds with results', async () => {
+  it('should record a history entry, when a first-page search succeeds with results', async () => {
     const { store, facade } = configure();
 
     store.dispatch(
@@ -47,7 +47,7 @@ describe('query-history state integration (real store + real reducer + real effe
     expect(facade.entries()).toEqual([{ query: 'cats', lastUsedAt: expect.any(Number) }]);
   });
 
-  it('does not record an entry for a page-2 (load more) or zero-result success', async () => {
+  it('should not record an entry, when the success is for a page-2 (load more) or zero-result result', async () => {
     const { store, facade } = configure();
 
     store.dispatch(
@@ -88,7 +88,7 @@ describe('query-history state integration (real store + real reducer + real effe
     expect(facade.entries().map((entry) => entry.query)).toEqual(['sentinel']);
   });
 
-  it('treats queries that differ only by case as a single history entry end-to-end', async () => {
+  it('should treat queries that differ only by case as a single history entry, when recorded end-to-end', async () => {
     const { store, facade } = configure();
 
     store.dispatch(

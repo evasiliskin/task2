@@ -22,17 +22,17 @@ describe('SearchFacade', () => {
     facade = TestBed.inject(SearchFacade);
   });
 
-  it('search() dispatches queryTyped with the raw query', () => {
+  it('should dispatch queryTyped with the raw query, when search() is called', () => {
     facade.search('cats');
     expect(dispatchSpy).toHaveBeenCalledWith(SearchPageActions.queryTyped({ query: 'cats' }));
   });
 
-  it('loadNextPage() dispatches nextPageRequested', () => {
+  it('should dispatch nextPageRequested, when loadNextPage() is called', () => {
     facade.loadNextPage();
     expect(dispatchSpy).toHaveBeenCalledWith(SearchPageActions.nextPageRequested());
   });
 
-  it('retry() dispatches retryRequested', () => {
+  it('should dispatch retryRequested, when retry() is called', () => {
     facade.retry();
     expect(dispatchSpy).toHaveBeenCalledWith(SearchActions.retryRequested());
   });

@@ -8,6 +8,7 @@ import {
   selectActiveQuery,
   selectHasMoreResults,
   selectIsLoadingMore,
+  selectIsLoadingMoreError,
 } from './state/search.reducer';
 
 @Injectable({ providedIn: 'root' })
@@ -20,6 +21,7 @@ export class SearchFacade {
   readonly activeQuery$ = this.store.select(selectActiveQuery);
   readonly hasMoreResults$ = this.store.select(selectHasMoreResults);
   readonly isLoadingMore$ = this.store.select(selectIsLoadingMore);
+  readonly isLoadingMoreError$ = this.store.select(selectIsLoadingMoreError);
 
   search(query: string): void {
     this.store.dispatch(SearchPageActions.queryTyped({ query }));

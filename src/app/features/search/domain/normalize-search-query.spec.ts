@@ -9,7 +9,7 @@ describe('normalizeSearchQuery', () => {
     ['already normal', 'already normal'],
   ];
 
-  it.each(cases)('normalizes %j to %j', (input, expected) => {
+  it.each(cases)('should normalize %j to %j, when given as input', (input, expected) => {
     expect(normalizeSearchQuery(input)).toBe(expected);
   });
 });

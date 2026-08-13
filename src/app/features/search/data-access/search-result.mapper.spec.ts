@@ -16,7 +16,7 @@ describe('mapOpenverseImageToSearchResult', () => {
     foreign_landing_url: 'https://example.com/source',
   };
 
-  it('maps and trims all known DTO fields to the domain model', () => {
+  it('should map and trim all known DTO fields to the domain model, when the DTO is valid', () => {
     expect(mapOpenverseImageToSearchResult(baseDto)).toEqual({
       id: 'abc-123',
       title: 'Sunset over the hills',
@@ -29,12 +29,12 @@ describe('mapOpenverseImageToSearchResult', () => {
     });
   });
 
-  it('falls back to "Untitled" when title is null or blank', () => {
+  it('should fall back to "Untitled", when title is null or blank', () => {
     expect(mapOpenverseImageToSearchResult({ ...baseDto, title: null }).title).toBe('Untitled');
     expect(mapOpenverseImageToSearchResult({ ...baseDto, title: '   ' }).title).toBe('Untitled');
   });
 
-  it('defaults missing width/height to 0', () => {
+  it('should default missing width/height to 0, when the DTO omits them', () => {
     const result = mapOpenverseImageToSearchResult({ ...baseDto, width: null, height: null });
     expect(result.width).toBe(0);
     expect(result.height).toBe(0);
@@ -42,7 +42,7 @@ describe('mapOpenverseImageToSearchResult', () => {
 });
 
 describe('mapOpenverseSearchResponse', () => {
-  it('maps result_count/page_count and every result item', () => {
+  it('should map result_count/page_count and every result item, when the response is valid', () => {
     const dto: OpenverseSearchResponseDto = {
       result_count: 240,
       page_count: 12,

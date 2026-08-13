@@ -25,7 +25,7 @@ describe('OpenverseApi', () => {
     httpMock.verify();
   });
 
-  it('requests the images endpoint with q, page and page_size params', () => {
+  it('should request the images endpoint with q, page and page_size params, when searching images', () => {
     const response: OpenverseSearchResponseDto = { result_count: 0, page_count: 0, results: [] };
 
     api.searchImages('cats', 2, 20).subscribe();
