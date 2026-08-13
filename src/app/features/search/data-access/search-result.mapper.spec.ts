@@ -1,4 +1,7 @@
-import { mapOpenverseImageToSearchResult, mapOpenverseSearchResponse } from './search-result.mapper';
+import {
+  mapOpenverseImageToSearchResult,
+  mapOpenverseSearchResponse,
+} from './search-result.mapper';
 import { OpenverseImageDto, OpenverseSearchResponseDto } from './openverse-image.dto';
 
 describe('mapOpenverseImageToSearchResult', () => {
