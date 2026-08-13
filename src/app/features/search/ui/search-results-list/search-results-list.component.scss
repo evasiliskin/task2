@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+.search-results-list__viewport {
+  height: calc(100vh - 240px);
+  min-height: 320px;
+}
+
+.search-results-list__item {
+  height: 96px;
+  box-sizing: border-box;
+}
+
+.search-results-list__loading-more {
+  padding: 12px;
+  text-align: center;
+  color: #666;
+}
+
+.search-results-list__load-more-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: #a8071a;
+}

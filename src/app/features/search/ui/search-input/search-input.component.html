@@ -1,0 +1,18 @@
+<div class="search-input">
+  <label for="search-input-field" class="search-input__label">Search images</label>
+  <input
+    id="search-input-field"
+    nz-input
+    name="searchQuery"
+    autocomplete="off"
+    placeholder='Try "mountains" or "cats"'
+    [nzAutocomplete]="auto"
+    [ngModel]="queryText()"
+    (ngModelChange)="onQueryChange($event)"
+  />
+  <nz-autocomplete #auto>
+    @for (suggestion of suggestions(); track suggestion) {
+      <nz-auto-option [nzValue]="suggestion">{{ suggestion }}</nz-auto-option>
+    }
+  </nz-autocomplete>
+</div>

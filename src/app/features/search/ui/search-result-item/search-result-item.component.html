@@ -1,0 +1,16 @@
+<button type="button" class="search-result-item" (click)="selected.emit()">
+  <img
+    class="search-result-item__thumbnail"
+    [src]="result().thumbnailUrl"
+    [alt]="result().title"
+    loading="lazy"
+    width="80"
+    height="80"
+  />
+  <span class="search-result-item__meta">
+    <span class="search-result-item__title">{{ result().title }}</span>
+    @if (result().creator) {
+      <span class="search-result-item__creator">by {{ result().creator }}</span>
+    }
+  </span>
+</button>

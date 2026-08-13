@@ -1,4 +1,4 @@
 import { Routes } from '@angular/router';
-import { Home } from './features/home/home.component';
+import { SearchPage } from './features/search/ui/search-page/search-page.component';
 
-export const routes: Routes = [{ path: '', component: Home, title: 'Home' }];
+export const routes: Routes = [{ path: '', component: SearchPage, title: 'Image Search' }];

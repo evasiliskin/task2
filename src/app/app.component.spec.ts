@@ -21,4 +21,12 @@ describe('App', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('router-outlet')).toBeTruthy();
   });
+
+  it('should render the app title in the header', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.app-shell__title')?.textContent).toContain(
+      'Image Search',
+    );
+  });
 });
