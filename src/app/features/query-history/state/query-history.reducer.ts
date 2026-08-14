@@ -20,7 +20,7 @@ function evictLeastRecentlyUsed(state: QueryHistoryState): QueryHistoryState {
   }
   const surplus = state.ids.length - MAX_QUERY_HISTORY_ENTRIES;
   const staleIds = [...state.ids]
-    .map((id) => state.entities[id as string])
+    .map((id) => state.entities[String(id)])
     .filter((entry): entry is QueryHistoryEntry => entry !== undefined)
     .sort((a, b) => a.lastUsedAt - b.lastUsedAt)
     .slice(0, surplus)
