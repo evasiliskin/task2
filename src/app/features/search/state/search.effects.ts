@@ -84,7 +84,7 @@ export class SearchEffects {
         return SearchApiActions.loadResultsSuccess({ query, page, ...mapped });
       }),
       catchError((error: NormalizedHttpError) =>
-        of(SearchApiActions.loadResultsFailure({ message: error.message })),
+        of(SearchApiActions.loadResultsFailure({ query, page, message: error.message })),
       ),
     );
   }

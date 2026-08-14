@@ -28,6 +28,6 @@ export const SearchApiActions = createActionGroup({
       totalCount: number;
       pageCount: number;
     }>(),
-    'Load Results Failure': props<{ message: string }>(),
+    'Load Results Failure': props<{ query: string; page: number; message: string }>(),
   },
 });

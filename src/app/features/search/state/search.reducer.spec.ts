@@ -84,7 +84,7 @@ describe('search reducer', () => {
 
   it('should set an error message and status, when the initial search fails', () => {
     const loadingState = { ...activeCatsState, status: 'loading' as const };
-    const state = reducer(loadingState, SearchApiActions.loadResultsFailure({ message: 'boom' }));
+    const state = reducer(loadingState, SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }));
 
     expect(state.status).toBe('error');
     expect(state.error).toBe('boom');
@@ -96,7 +96,7 @@ describe('search reducer', () => {
       ...searchResultsAdapter.setAll([makeResult('1')], activeCatsState),
       status: 'success' as const,
     };
-    const state = reducer(successState, SearchApiActions.loadResultsFailure({ message: 'boom' }));
+    const state = reducer(successState, SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }));
 
     expect(state).toBe(successState);
   });
@@ -112,7 +112,7 @@ describe('search reducer', () => {
 
     const state = reducer(
       loadingMoreState,
-      SearchApiActions.loadResultsFailure({ message: 'boom' }),
+      SearchApiActions.loadResultsFailure({ query: 'cats', page: 2, message: 'boom' }),
     );
 
     expect(state.status).toBe('loadingMoreError');
@@ -192,6 +192,54 @@ describe('search reducer', () => {
     expect(reducer(noMorePages, SearchPageActions.nextPageRequested()).status).toBe(
       'loadingMoreError',
     );
+  });
+
+  describe('stale failure correlation', () => {
+    const loadingState = {
+      ...initialState,
+      activeQuery: 'dog',
+      status: 'loading' as const,
+    };
+
+    it('should ignore a failure for a query that is no longer active', () => {
+      const next = searchFeature.reducer(
+        loadingState,
+        SearchApiActions.loadResultsFailure({ query: 'cat', page: 2, message: 'boom' }),
+      );
+
+      expect(next.status).toBe('loading');
+      expect(next.error).toBeNull();
+    });
+
+    it('should apply a failure for page 1 of the active query while loading', () => {
+      const next = searchFeature.reducer(
+        loadingState,
+        SearchApiActions.loadResultsFailure({ query: 'dog', page: 1, message: 'boom' }),
+      );
+
+      expect(next.status).toBe('error');
+      expect(next.error).toBe('boom');
+    });
+
+    it('should apply a failure for the next page of the active query while loading more', () => {
+      const next = searchFeature.reducer(
+        { ...initialState, activeQuery: 'dog', status: 'loadingMore', page: 1, pageCount: 3 },
+        SearchApiActions.loadResultsFailure({ query: 'dog', page: 2, message: 'boom' }),
+      );
+
+      expect(next.status).toBe('loadingMoreError');
+      expect(next.error).toBe('boom');
+    });
+
+    it('should ignore a failure for a page other than the one being awaited', () => {
+      const next = searchFeature.reducer(
+        { ...initialState, activeQuery: 'dog', status: 'loadingMore', page: 1, pageCount: 5 },
+        SearchApiActions.loadResultsFailure({ query: 'dog', page: 4, message: 'boom' }),
+      );
+
+      expect(next.status).toBe('loadingMore');
+      expect(next.error).toBeNull();
+    });
   });
 });
 

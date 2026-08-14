@@ -136,7 +136,7 @@ describe('SearchEffects', () => {
       actions$.next(SearchActions.searchRequested({ query: 'cats' }));
     });
 
-    expect(emitted).toEqual(SearchApiActions.loadResultsFailure({ message: 'boom' }));
+    expect(emitted).toEqual(SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }));
   });
 
   it('should serve a cached page without calling the API, when performSearch$ finds a cache hit', async () => {

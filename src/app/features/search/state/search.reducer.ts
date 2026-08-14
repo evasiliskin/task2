@@ -78,16 +78,16 @@ export const searchFeature = createFeature({
         };
       },
     ),
-    on(SearchApiActions.loadResultsFailure, (state, { message }) => {
-      if (state.status === 'loadingMore') {
+    on(SearchApiActions.loadResultsFailure, (state, { query, page, message }) => {
+      if (query !== state.activeQuery) {
+        return state;
+      }
+      if (state.status === 'loadingMore' && page === state.page + 1) {
         return { ...state, status: 'loadingMoreError' as const, error: message };
       }
-      if (state.status === 'loading') {
+      if (state.status === 'loading' && page === 1) {
         return { ...state, status: 'error' as const, error: message };
       }
-      // A failure for a request nobody is waiting on anymore (e.g. an orphaned
-      // page-2 fetch that resolves after the query changed) must not clobber
-      // whatever the store has moved on to.
       return state;
     }),
   ),
