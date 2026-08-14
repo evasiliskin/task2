@@ -106,6 +106,27 @@ export const searchFeature = createFeature({
   }),
 });
 
+export interface PaginationContext {
+  readonly activeQuery: string | null;
+  readonly status: SearchStatus;
+  readonly page: number;
+}
+
+export type ActivePaginationContext = PaginationContext & { readonly activeQuery: string };
+
+export const selectPaginationContext = createSelector(
+  searchFeature.selectActiveQuery,
+  searchFeature.selectStatus,
+  searchFeature.selectPage,
+  (activeQuery, status, page): PaginationContext => ({ activeQuery, status, page }),
+);
+
+export function isActivePaginationContext(
+  context: PaginationContext,
+): context is ActivePaginationContext {
+  return context.activeQuery !== null;
+}
+
 export const {
   selectSearchState,
   selectActiveQuery,

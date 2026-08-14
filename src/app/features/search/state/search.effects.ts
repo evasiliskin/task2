@@ -10,6 +10,8 @@ import {
   filter,
   map,
   switchMap,
+  takeUntil,
+  tap,
   withLatestFrom,
 } from 'rxjs/operators';
 import { SEARCH_RESULTS_PAGE_SIZE } from '../../../core/api/openverse/openverse-api.config';
@@ -20,7 +22,7 @@ import { SearchResultsCache } from '../data-access/search-results-cache.service'
 import { isMeaningfulQuery } from '../domain/is-meaningful-query';
 import { normalizeSearchQuery } from '../domain/normalize-search-query';
 import { SearchActions, SearchApiActions, SearchPageActions } from './search.actions';
-import { selectSearchState } from './search.reducer';
+import { isActivePaginationContext, selectPaginationContext } from './search.reducer';
 
 @Injectable()
 export class SearchEffects {
@@ -28,6 +30,10 @@ export class SearchEffects {
   private readonly store = inject(Store);
   private readonly openverseApi = inject(OpenverseApi);
   private readonly cache = inject(SearchResultsCache);
+
+  private readonly queryInvalidated$ = this.actions$.pipe(
+    ofType(SearchActions.searchRequested, SearchActions.queryCleared),
+  );
 
   debounceQuery$ = createEffect(() =>
     this.actions$.pipe(
@@ -53,21 +59,28 @@ export class SearchEffects {
   loadNextPage$ = createEffect(() =>
     this.actions$.pipe(
       ofType(SearchPageActions.nextPageRequested),
-      withLatestFrom(this.store.select(selectSearchState)),
-      filter(([, state]) => state.status === 'loadingMore' && state.activeQuery !== null),
-      exhaustMap(([, state]) => this.loadPage(state.activeQuery as string, state.page + 1)),
+      withLatestFrom(this.store.select(selectPaginationContext)),
+      map(([, context]) => context),
+      filter((context) => context.status === 'loadingMore'),
+      filter(isActivePaginationContext),
+      exhaustMap((context) =>
+        this.loadPage(context.activeQuery, context.page + 1).pipe(
+          takeUntil(this.queryInvalidated$),
+        ),
+      ),
     ),
   );
 
   retry$ = createEffect(() =>
     this.actions$.pipe(
       ofType(SearchActions.retryRequested),
-      withLatestFrom(this.store.select(selectSearchState)),
-      filter(([, state]) => state.activeQuery !== null),
-      map(([, state]) =>
-        state.status === 'loadingMoreError'
+      withLatestFrom(this.store.select(selectPaginationContext)),
+      map(([, context]) => context),
+      filter(isActivePaginationContext),
+      map((context) =>
+        context.status === 'loadingMoreError'
           ? SearchPageActions.nextPageRequested()
-          : SearchActions.searchRequested({ query: state.activeQuery as string }),
+          : SearchActions.searchRequested({ query: context.activeQuery }),
       ),
     ),
   );
@@ -79,10 +92,8 @@ export class SearchEffects {
     }
     return this.openverseApi.searchImages(query, page, SEARCH_RESULTS_PAGE_SIZE).pipe(
       map(mapOpenverseSearchResponse),
-      map((mapped) => {
-        this.cache.set(query, page, mapped);
-        return SearchApiActions.loadResultsSuccess({ query, page, ...mapped });
-      }),
+      tap((mapped) => this.cache.set(query, page, mapped)),
+      map((mapped) => SearchApiActions.loadResultsSuccess({ query, page, ...mapped })),
       catchError((error: NormalizedHttpError) =>
         of(SearchApiActions.loadResultsFailure({ query, page, message: error.message })),
       ),

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore, Store } from '@ngrx/store';
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { firstValueFrom, of, Subject, throwError } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
 import { OpenverseApi } from '../data-access/openverse-api.service';
 import { SearchResultsCache } from '../data-access/search-results-cache.service';
@@ -138,5 +138,54 @@ describe('search state integration (real store + real reducer + real effects)', 
       expect.objectContaining({ id: 'cats-1' }),
       expect.objectContaining({ id: 'cats-2' }),
     ]);
+  });
+
+  it('should not deadlock pagination, when a new search starts while a page request is still in flight', async () => {
+    const pending = new Subject<unknown>();
+    const searchImages = vi.fn((query: string, page: number) => {
+      if (query === 'cat' && page === 2) {
+        return pending.asObservable();
+      }
+      return of({
+        result_count: 40,
+        page_count: 2,
+        results: [
+          {
+            id: `${query}-${page}`,
+            title: 'Title',
+            url: 'u',
+            thumbnail: 't',
+            width: 1,
+            height: 1,
+            creator: null,
+            foreign_landing_url: 'f',
+          },
+        ],
+      });
+    });
+    const cache = { get: vi.fn(() => undefined), set: vi.fn() };
+
+    TestBed.configureTestingModule({
+      providers: [
+        provideStore(),
+        provideState(searchFeature),
+        provideEffects(SearchEffects),
+        { provide: OpenverseApi, useValue: { searchImages } },
+        { provide: SearchResultsCache, useValue: cache },
+      ],
+    });
+    const store = TestBed.inject(Store);
+
+    store.dispatch(SearchActions.searchRequested({ query: 'cat' }));
+    store.dispatch(SearchPageActions.nextPageRequested());
+
+    store.dispatch(SearchActions.searchRequested({ query: 'dog' }));
+    store.dispatch(SearchPageActions.nextPageRequested());
+
+    const status = await firstValueFrom(store.select(selectStatus).pipe(take(1)));
+    expect(status).not.toBe('loadingMore');
+    expect(searchImages).toHaveBeenCalledWith('dog', 2, 20);
+
+    pending.complete();
   });
 });
