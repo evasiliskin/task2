@@ -2,7 +2,8 @@ import { suggestionsFor } from './suggestions-for';
 import { QueryHistoryEntry } from './query-history-entry.model';
 
 function entry(query: string, lastUsedAt: number): QueryHistoryEntry {
-  return { query, lastUsedAt };
+  const canonicalQuery = query.trim().replace(/\s+/g, ' ').toLowerCase();
+  return { query, canonicalQuery, words: canonicalQuery.split(' '), lastUsedAt };
 }
 
 describe('suggestionsFor', () => {

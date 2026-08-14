@@ -44,7 +44,14 @@ describe('query-history state integration (real store + real reducer + real effe
       ),
     );
 
-    expect(facade.entries()).toEqual([{ query: 'cats', lastUsedAt: expect.any(Number) }]);
+    expect(facade.entries()).toEqual([
+      {
+        query: 'cats',
+        canonicalQuery: 'cats',
+        words: ['cats'],
+        lastUsedAt: expect.any(Number),
+      },
+    ]);
   });
 
   it('should not record an entry, when the success is for a page-2 (load more) or zero-result result', async () => {

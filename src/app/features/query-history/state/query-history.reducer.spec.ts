@@ -1,4 +1,4 @@
-import { queryHistoryFeature } from './query-history.reducer';
+import { queryHistoryFeature, MAX_QUERY_HISTORY_ENTRIES } from './query-history.reducer';
 import { QueryHistoryActions } from './query-history.actions';
 
 const { reducer, initialState } = queryHistoryFeature;
@@ -10,7 +10,12 @@ describe('query-history reducer', () => {
       QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: 100 }),
     );
     expect(state.ids).toEqual(['cats']);
-    expect(state.entities['cats']).toEqual({ query: 'cats', lastUsedAt: 100 });
+    expect(state.entities['cats']).toEqual({
+      query: 'cats',
+      canonicalQuery: 'cats',
+      words: ['cats'],
+      lastUsedAt: 100,
+    });
   });
 
   it('should update lastUsedAt instead of duplicating the entry, when queryRecorded is dispatched for an existing query', () => {
@@ -38,7 +43,40 @@ describe('query-history reducer', () => {
     );
 
     expect(second.ids.length).toBe(1);
-    expect(second.entities['cats']).toEqual({ query: 'cats', lastUsedAt: 200 });
+    expect(second.entities['cats']).toEqual({
+      query: 'cats',
+      canonicalQuery: 'cats',
+      words: ['cats'],
+      lastUsedAt: 200,
+    });
+  });
+
+  it('should store the canonical form and the word list alongside the original query', () => {
+    const next = queryHistoryFeature.reducer(
+      initialState,
+      QueryHistoryActions.queryRecorded({ query: 'Mountain Lake', usedAt: 1 }),
+    );
+
+    expect(next.entities['mountain lake']).toEqual({
+      query: 'Mountain Lake',
+      canonicalQuery: 'mountain lake',
+      words: ['mountain', 'lake'],
+      lastUsedAt: 1,
+    });
+  });
+
+  it('should evict the least recently used entry, when the cap is exceeded', () => {
+    let state = initialState;
+    for (let i = 0; i < MAX_QUERY_HISTORY_ENTRIES + 1; i++) {
+      state = queryHistoryFeature.reducer(
+        state,
+        QueryHistoryActions.queryRecorded({ query: `query ${i}`, usedAt: i }),
+      );
+    }
+
+    expect(state.ids).toHaveLength(MAX_QUERY_HISTORY_ENTRIES);
+    expect(state.entities['query 0']).toBeUndefined();
+    expect(state.entities[`query ${MAX_QUERY_HISTORY_ENTRIES}`]).toBeDefined();
   });
 });
 
@@ -49,7 +87,7 @@ describe('query-history selectors', () => {
       QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: 100 }),
     );
     expect(queryHistoryFeature.selectQueryHistoryEntries({ queryHistory: state })).toEqual([
-      { query: 'cats', lastUsedAt: 100 },
+      { query: 'cats', canonicalQuery: 'cats', words: ['cats'], lastUsedAt: 100 },
     ]);
   });
 });

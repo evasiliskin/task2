@@ -17,6 +17,8 @@ describe('QueryHistoryFacade', () => {
 
     store.dispatch(QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: 1 }));
 
-    expect(facade.entries()).toEqual([{ query: 'cats', lastUsedAt: 1 }]);
+    expect(facade.entries()).toEqual([
+      { query: 'cats', canonicalQuery: 'cats', words: ['cats'], lastUsedAt: 1 },
+    ]);
   });
 });

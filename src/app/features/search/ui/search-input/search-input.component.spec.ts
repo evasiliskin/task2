@@ -5,11 +5,15 @@ import { QueryHistoryFacade } from '../../../query-history/query-history.facade'
 
 describe('SearchInput', () => {
   let searchFacade: { search: ReturnType<typeof vi.fn> };
-  let queryHistoryFacade: { entries: () => { query: string; lastUsedAt: number }[] };
+  let queryHistoryFacade: {
+    entries: () => { query: string; canonicalQuery: string; words: string[]; lastUsedAt: number }[];
+  };
 
   beforeEach(() => {
     searchFacade = { search: vi.fn() };
-    queryHistoryFacade = { entries: () => [{ query: 'cats', lastUsedAt: 1 }] };
+    queryHistoryFacade = {
+      entries: () => [{ query: 'cats', canonicalQuery: 'cats', words: ['cats'], lastUsedAt: 1 }],
+    };
 
     TestBed.configureTestingModule({
       imports: [SearchInput],
