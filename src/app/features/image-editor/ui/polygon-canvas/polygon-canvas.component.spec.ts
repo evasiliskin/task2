@@ -344,4 +344,26 @@ describe('PolygonCanvas', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Polygon drawing is unavailable');
   });
+
+  it('should emit polygonDeleted and announce it, when the visible delete button is clicked', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+
+    const deletedSpy = vi.fn();
+    fixture.componentInstance.polygonDeleted.subscribe(deletedSpy);
+
+    const deleteButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      '.polygon-canvas__edit-controls button',
+    );
+    expect(deleteButton).not.toBeNull();
+    deleteButton.click();
+    fixture.detectChanges();
+
+    expect(deletedSpy).toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Polygon deleted.');
+  });
+
+  it('should not render the edit controls, when no polygon exists', () => {
+    expect(fixture.nativeElement.querySelector('.polygon-canvas__edit-controls')).toBeNull();
+  });
 });

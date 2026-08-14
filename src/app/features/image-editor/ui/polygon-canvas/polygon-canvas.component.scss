@@ -48,6 +48,13 @@
     gap: 8px;
   }
 
+  &__edit-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
   &__draw-hint {
     font-size: 13px;
     color: var(--app-color-text-secondary);

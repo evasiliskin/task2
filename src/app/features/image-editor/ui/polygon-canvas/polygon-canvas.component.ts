@@ -197,6 +197,11 @@ export class PolygonCanvas {
     this.drawPoints.set([]);
   }
 
+  protected onDeletePolygon(): void {
+    this.editStatus.set('Polygon deleted.');
+    this.polygonDeleted.emit();
+  }
+
   protected onKeyDown(event: KeyboardEvent): void {
     const currentPolygon = this.polygon();
     if (!currentPolygon) {
@@ -231,8 +236,7 @@ export class PolygonCanvas {
       case 'Delete':
       case 'Backspace':
         event.preventDefault();
-        this.editStatus.set('Polygon deleted.');
-        this.polygonDeleted.emit();
+        this.onDeletePolygon();
         return;
       default:
         return;

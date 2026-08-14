@@ -56,4 +56,15 @@
       </button>
     </div>
   }
+
+  @if (polygon()) {
+    <div class="polygon-canvas__edit-controls">
+      <span class="polygon-canvas__draw-hint">
+        Drag the polygon to move it, drag the handle to rotate it.
+      </span>
+      <button type="button" nz-button nzSize="small" nzDanger (click)="onDeletePolygon()">
+        Delete polygon
+      </button>
+    </div>
+  }
 </div>
