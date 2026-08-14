@@ -23,7 +23,8 @@ export class ImagePreviewDialogService {
       modalRef.afterClose.pipe(take(1)).subscribe(() => {
         triggerElement?.focus();
       });
-    } catch {
+    } catch (error) {
+      console.error('Failed to open the image preview dialog', error);
       triggerElement?.focus();
     }
   }

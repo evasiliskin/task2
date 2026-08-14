@@ -48,10 +48,18 @@ describe('ImagePreviewDialogService', () => {
   });
 
   it('should resolve without throwing, when the modal cannot be created', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     create.mockImplementation(() => {
       throw new Error('chunk load failed');
     });
 
     await expect(service.open(target)).resolves.toBeUndefined();
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to open the image preview dialog',
+      expect.any(Error)
+    );
+
+    errorSpy.mockRestore();
   });
 });
