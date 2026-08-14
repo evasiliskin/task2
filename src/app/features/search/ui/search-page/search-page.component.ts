@@ -3,7 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { SearchFacade } from '../../search.facade';
 import { SearchResult } from '../../domain/search-result.model';
-import { ImageEditorFacade } from '../../../image-editor/image-editor.facade';
+import { ImagePreviewDialogService } from '../../../image-editor/ui/image-preview-dialog/image-preview-dialog.service';
 import { SearchEmptyState } from '../search-empty-state/search-empty-state.component';
 import { SearchErrorState } from '../search-error-state/search-error-state.component';
 import { SearchInput } from '../search-input/search-input.component';
@@ -18,7 +18,7 @@ import { SearchResultsList } from '../search-results-list/search-results-list.co
 })
 export class SearchPage {
   protected readonly searchFacade = inject(SearchFacade);
-  private readonly imageEditorFacade = inject(ImageEditorFacade);
+  private readonly imagePreviewDialog = inject(ImagePreviewDialogService);
 
   protected readonly results = toSignal(this.searchFacade.results$, {
     initialValue: [] as SearchResult[],
@@ -47,7 +47,7 @@ export class SearchPage {
   }
 
   protected onResultSelected(result: SearchResult): void {
-    void this.imageEditorFacade.open({
+    void this.imagePreviewDialog.open({
       imageId: result.id,
       imageUrl: result.imageUrl,
       title: result.title,

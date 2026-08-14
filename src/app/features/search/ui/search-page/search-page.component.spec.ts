@@ -6,7 +6,7 @@ import { SearchFacade } from '../../search.facade';
 import { QueryHistoryFacade } from '../../../query-history/query-history.facade';
 import { SearchResult } from '../../domain/search-result.model';
 import { SearchResultsList } from '../search-results-list/search-results-list.component';
-import { ImageEditorFacade } from '../../../image-editor/image-editor.facade';
+import { ImagePreviewDialogService } from '../../../image-editor/ui/image-preview-dialog/image-preview-dialog.service';
 
 function makeFacadeStub(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -30,7 +30,7 @@ describe('SearchPage', () => {
       providers: [
         { provide: SearchFacade, useValue: makeFacadeStub(facadeOverrides) },
         { provide: QueryHistoryFacade, useValue: { entries: () => [] } },
-        { provide: ImageEditorFacade, useValue: { open: vi.fn() } },
+        { provide: ImagePreviewDialogService, useValue: { open: vi.fn() } },
       ],
     });
   }
@@ -180,8 +180,8 @@ describe('SearchPage', () => {
     const resultsList = fixture.debugElement.query(By.directive(SearchResultsList));
     (resultsList.componentInstance as SearchResultsList).resultSelected.emit(result);
 
-    const imageEditorFacade = TestBed.inject(ImageEditorFacade);
-    expect(imageEditorFacade.open).toHaveBeenCalledWith({
+    const imagePreviewDialog = TestBed.inject(ImagePreviewDialogService);
+    expect(imagePreviewDialog.open).toHaveBeenCalledWith({
       imageId: '1',
       imageUrl: 'https://x/full.jpg',
       title: 'A cat',
