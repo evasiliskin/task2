@@ -1,7 +1,10 @@
 import { NormalizedPoint } from '../domain/normalized-point.model';
 import { Polygon } from '../domain/polygon.model';
 import { CanvasBoxSize, PixelPoint } from '../domain/geometry/coordinate-mapping.model';
-import { PolygonInteractionController } from './polygon-interaction-controller';
+import {
+  KEYBOARD_NUDGE_STEP,
+  PolygonInteractionController,
+} from './polygon-interaction-controller';
 
 describe('PolygonInteractionController', () => {
   const boxSize: CanvasBoxSize = { width: 100, height: 100 };
@@ -72,6 +75,15 @@ describe('PolygonInteractionController', () => {
       expect(updated.points).toBe(square.points);
       expect(updated.rotationRadians).toBe(square.rotationRadians);
     });
+
+    it('should clamp the position, when a drag would push the polygon past the image edge', () => {
+      const controller = new PolygonInteractionController();
+      const session = controller.beginDrag(square, { x: 50, y: 50 });
+
+      const moved = controller.updateDrag(session, { x: 500, y: 500 }, { width: 100, height: 100 });
+
+      expect(moved.position).toEqual({ x: 1, y: 1 });
+    });
   });
 
   describe('rotate', () => {
@@ -105,6 +117,16 @@ describe('PolygonInteractionController', () => {
       expect(updated.position).toEqual({ x: 0.52, y: 0.5 });
       expect(updated.points).toBe(square.points);
       expect(updated.rotationRadians).toBe(square.rotationRadians);
+    });
+
+    it('should clamp the position, when repeated nudges would leave the image', () => {
+      const controller = new PolygonInteractionController();
+      let polygon = { ...square, position: { x: 0.02, y: 0.5 } };
+
+      polygon = controller.nudge(polygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 });
+      polygon = controller.nudge(polygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 });
+
+      expect(polygon.position.x).toBe(0);
     });
   });
 

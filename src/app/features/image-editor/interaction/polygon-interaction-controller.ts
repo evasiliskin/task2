@@ -1,6 +1,7 @@
 import { NormalizedPoint } from '../domain/normalized-point.model';
 import { Polygon } from '../domain/polygon.model';
 import { CanvasBoxSize, PixelPoint } from '../domain/geometry/coordinate-mapping.model';
+import { clampPolygonPosition } from '../domain/geometry/clamp-polygon-position';
 import { getRotationHandlePoint } from '../domain/geometry/get-rotation-handle-point';
 import { getWorldPoints } from '../domain/geometry/get-world-points';
 import { isPointInPolygon } from '../domain/geometry/is-point-in-polygon';
@@ -77,7 +78,7 @@ export class PolygonInteractionController {
     const normalizedDelta = toNormalizedPoint(pixelDelta, boxSize);
     return {
       ...session.polygon,
-      position: addPoints(session.polygon.position, normalizedDelta),
+      position: clampPolygonPosition(addPoints(session.polygon.position, normalizedDelta)),
     };
   }
 
@@ -99,7 +100,7 @@ export class PolygonInteractionController {
   }
 
   nudge(polygon: Polygon, delta: NormalizedPoint): Polygon {
-    return { ...polygon, position: addPoints(polygon.position, delta) };
+    return { ...polygon, position: clampPolygonPosition(addPoints(polygon.position, delta)) };
   }
 
   rotateByStep(polygon: Polygon, deltaRadians: number): Polygon {
