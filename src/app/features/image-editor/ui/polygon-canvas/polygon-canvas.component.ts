@@ -17,6 +17,8 @@ import { NormalizedPoint } from '../../domain/normalized-point.model';
 import { Polygon } from '../../domain/polygon.model';
 import {
   DragSession,
+  KEYBOARD_NUDGE_STEP,
+  KEYBOARD_ROTATION_STEP_RADIANS,
   PolygonInteractionController,
   RotateSession,
 } from '../../interaction/polygon-interaction-controller';
@@ -25,6 +27,8 @@ import { PolygonCanvasRenderer } from '../../rendering/polygon-canvas-renderer';
 type ActiveGesture =
   | { readonly kind: 'drag'; readonly session: DragSession }
   | { readonly kind: 'rotate'; readonly session: RotateSession };
+
+const KEYBOARD_ROTATION_STEP_DEGREES = Math.round((KEYBOARD_ROTATION_STEP_RADIANS * 180) / Math.PI);
 
 @Component({
   selector: 'app-polygon-canvas',
@@ -41,11 +45,15 @@ export class PolygonCanvas {
   readonly polygonDrawn = output<readonly NormalizedPoint[]>();
   readonly polygonMoved = output<NormalizedPoint>();
   readonly polygonRotated = output<number>();
+  readonly polygonDeleted = output<void>();
 
   protected readonly minPoints = MIN_POLYGON_POINTS;
   protected readonly drawPoints = signal<readonly NormalizedPoint[]>([]);
   protected readonly draftPolygon = signal<Polygon | null>(null);
   protected readonly displayPolygon = computed(() => this.draftPolygon() ?? this.polygon());
+  protected readonly editStatus = signal('');
+  protected readonly editorAriaLabel =
+    'Polygon editor. Use arrow keys to move, [ and ] to rotate, Delete to remove.';
 
   private readonly boxSize = signal<CanvasBoxSize>({ width: 0, height: 0 });
   private readonly imageEl = viewChild.required<ElementRef<HTMLImageElement>>('imageEl');
@@ -173,6 +181,60 @@ export class PolygonCanvas {
 
   protected onCancelDraw(): void {
     this.drawPoints.set([]);
+  }
+
+  protected onKeyDown(event: KeyboardEvent): void {
+    const currentPolygon = this.polygon();
+    if (!currentPolygon) {
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowUp':
+        event.preventDefault();
+        this.commitNudge(currentPolygon, { x: 0, y: -KEYBOARD_NUDGE_STEP }, 'up');
+        return;
+      case 'ArrowDown':
+        event.preventDefault();
+        this.commitNudge(currentPolygon, { x: 0, y: KEYBOARD_NUDGE_STEP }, 'down');
+        return;
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.commitNudge(currentPolygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 }, 'left');
+        return;
+      case 'ArrowRight':
+        event.preventDefault();
+        this.commitNudge(currentPolygon, { x: KEYBOARD_NUDGE_STEP, y: 0 }, 'right');
+        return;
+      case '[':
+        event.preventDefault();
+        this.commitRotate(currentPolygon, -KEYBOARD_ROTATION_STEP_RADIANS, 'counterclockwise');
+        return;
+      case ']':
+        event.preventDefault();
+        this.commitRotate(currentPolygon, KEYBOARD_ROTATION_STEP_RADIANS, 'clockwise');
+        return;
+      case 'Delete':
+      case 'Backspace':
+        event.preventDefault();
+        this.editStatus.set('Polygon deleted.');
+        this.polygonDeleted.emit();
+        return;
+      default:
+        return;
+    }
+  }
+
+  private commitNudge(polygon: Polygon, delta: NormalizedPoint, direction: string): void {
+    const updated = this.controller.nudge(polygon, delta);
+    this.editStatus.set(`Polygon moved ${direction}.`);
+    this.polygonMoved.emit(updated.position);
+  }
+
+  private commitRotate(polygon: Polygon, deltaRadians: number, direction: string): void {
+    const updated = this.controller.rotateByStep(polygon, deltaRadians);
+    this.editStatus.set(`Polygon rotated ${KEYBOARD_ROTATION_STEP_DEGREES}° ${direction}.`);
+    this.polygonRotated.emit(updated.rotationRadians);
   }
 
   private commitDraw(): void {

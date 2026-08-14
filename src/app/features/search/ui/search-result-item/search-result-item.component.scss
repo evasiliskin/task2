@@ -16,7 +16,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid #1677ff;
+    outline: 2px solid var(--app-color-primary);
     outline-offset: -2px;
   }
 
@@ -44,6 +44,6 @@
 
   &__creator {
     font-size: 12px;
-    color: #666;
+    color: var(--app-color-text-secondary);
   }
 }

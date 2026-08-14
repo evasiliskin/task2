@@ -95,4 +95,28 @@ describe('PolygonInteractionController', () => {
       expect(updated.position).toEqual(square.position);
     });
   });
+
+  describe('nudge', () => {
+    it('should move the polygon position by the given normalized delta, leaving points and rotation unchanged', () => {
+      const controller = new PolygonInteractionController();
+
+      const updated = controller.nudge(square, { x: 0.02, y: 0 });
+
+      expect(updated.position).toEqual({ x: 0.52, y: 0.5 });
+      expect(updated.points).toBe(square.points);
+      expect(updated.rotationRadians).toBe(square.rotationRadians);
+    });
+  });
+
+  describe('rotateByStep', () => {
+    it('should add the given radians to the current rotation, leaving position and points unchanged', () => {
+      const controller = new PolygonInteractionController();
+
+      const updated = controller.rotateByStep(square, Math.PI / 12);
+
+      expect(updated.rotationRadians).toBeCloseTo(Math.PI / 12, 9);
+      expect(updated.position).toEqual(square.position);
+      expect(updated.points).toBe(square.points);
+    });
+  });
 });

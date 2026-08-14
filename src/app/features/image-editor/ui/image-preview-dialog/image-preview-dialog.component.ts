@@ -32,4 +32,8 @@ export class ImagePreviewDialog {
   protected onPolygonRotated(rotationRadians: number): void {
     this.imageEditorFacade.rotatePolygon(this.target.imageId, rotationRadians);
   }
+
+  protected onPolygonDeleted(): void {
+    this.imageEditorFacade.deletePolygon(this.target.imageId);
+  }
 }

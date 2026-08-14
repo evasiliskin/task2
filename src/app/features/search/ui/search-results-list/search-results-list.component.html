@@ -12,10 +12,13 @@
     </div>
   </cdk-virtual-scroll-viewport>
   @if (isLoadingMore()) {
-    <div class="search-results-list__loading-more" role="status">Loading more results…</div>
+    <div class="search-results-list__loading-more" role="status" aria-live="polite">
+      <nz-spin nzSimple />
+      <span>Loading more results…</span>
+    </div>
   } @else if (isLoadingMoreError()) {
     <div class="search-results-list__load-more-error" role="alert">
-      <span>Couldn't load more results.</span>
+      <nz-alert nzType="error" nzShowIcon nzMessage="Couldn't load more results." />
       <button type="button" nz-button nzSize="small" (click)="retry.emit()">Retry</button>
     </div>
   }

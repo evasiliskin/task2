@@ -4,13 +4,21 @@
     <canvas
       #canvasEl
       class="polygon-canvas__overlay"
+      [attr.tabindex]="0"
+      [attr.role]="polygon() ? 'group' : null"
+      [attr.aria-label]="polygon() ? editorAriaLabel : null"
       (pointerdown)="onPointerDown($event)"
       (pointermove)="onPointerMove($event)"
       (pointerup)="onPointerUp($event)"
       (pointercancel)="onPointerUp($event)"
       (dblclick)="onCanvasDoubleClick()"
+      (keydown)="onKeyDown($event)"
     ></canvas>
   </div>
+
+  <span class="polygon-canvas__sr-status" role="status" aria-live="polite">
+    {{ editStatus() }}
+  </span>
 
   @if (!polygon()) {
     <div class="polygon-canvas__draw-controls">

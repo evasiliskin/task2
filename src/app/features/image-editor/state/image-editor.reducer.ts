@@ -24,6 +24,9 @@ export const imageEditorFeature = createFeature({
     on(ImageEditorActions.polygonRotated, (state, { imageId, rotationRadians }) =>
       polygonAdapter.updateOne({ id: imageId, changes: { rotationRadians } }, state),
     ),
+    on(ImageEditorActions.polygonDeleted, (state, { imageId }) =>
+      polygonAdapter.removeOne(imageId, state),
+    ),
   ),
   extraSelectors: ({ selectImageEditorState }) => ({
     ...polygonAdapter.getSelectors(selectImageEditorState),

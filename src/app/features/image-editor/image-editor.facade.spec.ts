@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Store } from '@ngrx/store';
 import { NzModalService } from 'ng-zorro-antd/modal';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { ImageEditorActions } from './state/image-editor.actions';
 import { ImageEditorFacade } from './image-editor.facade';
 import { ImagePreviewTarget } from './domain/image-preview-target.model';
@@ -16,7 +16,7 @@ describe('ImageEditorFacade', () => {
   beforeEach(() => {
     dispatchSpy = vi.fn();
     selectSpy = vi.fn().mockReturnValue(of(null));
-    modalCreateSpy = vi.fn();
+    modalCreateSpy = vi.fn().mockReturnValue({ afterClose: of(undefined) });
 
     TestBed.configureTestingModule({
       providers: [
@@ -79,7 +79,7 @@ describe('ImageEditorFacade', () => {
     expect(received).toEqual(polygon);
   });
 
-  it('should open a modal with the target as nzData, the target title, and no footer, when open() is called', async () => {
+  it('should open a modal with the target as nzData, the target title, a responsive width, and no footer, when open() is called', async () => {
     const target: ImagePreviewTarget = {
       imageId: 'image-1',
       imageUrl: 'https://example.test/full.jpg',
@@ -93,6 +93,44 @@ describe('ImageEditorFacade', () => {
     expect(config.nzData).toBe(target);
     expect(config.nzTitle).toBe('A mountain');
     expect(config.nzFooter).toBeNull();
+    expect(config.nzWidth).toBe('min(720px, calc(100vw - 32px))');
     expect(typeof config.nzContent).toBe('function');
+  });
+
+  it('should dispatch polygonDeleted with the imageId, when deletePolygon() is called', () => {
+    facade.deletePolygon('image-1');
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      ImageEditorActions.polygonDeleted({ imageId: 'image-1' }),
+    );
+  });
+
+  it('should restore focus to the element that was focused before opening, when the modal closes', async () => {
+    const afterClose = new Subject<void>();
+    modalCreateSpy.mockReturnValue({ afterClose });
+
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const target: ImagePreviewTarget = {
+      imageId: 'image-1',
+      imageUrl: 'https://example.test/full.jpg',
+      title: 'A mountain',
+    };
+    await facade.open(target);
+
+    const dialogElement = document.createElement('div');
+    dialogElement.tabIndex = -1;
+    document.body.appendChild(dialogElement);
+    dialogElement.focus();
+    expect(document.activeElement).toBe(dialogElement);
+
+    afterClose.next();
+
+    expect(document.activeElement).toBe(trigger);
+
+    document.body.removeChild(trigger);
+    document.body.removeChild(dialogElement);
   });
 });

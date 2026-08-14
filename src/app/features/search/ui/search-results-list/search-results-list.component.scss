@@ -5,6 +5,11 @@
 .search-results-list__viewport {
   height: calc(100vh - 240px);
   min-height: 320px;
+
+  @media (max-width: 599px) {
+    height: calc(100vh - 200px);
+    min-height: 280px;
+  }
 }
 
 .search-results-list__item {
@@ -13,16 +18,19 @@
 }
 
 .search-results-list__loading-more {
-  padding: 12px;
-  text-align: center;
-  color: #666;
-}
-
-.search-results-list__load-more-error {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  color: #a8071a;
+  color: var(--app-color-text-secondary);
+}
+
+.search-results-list__load-more-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
 }

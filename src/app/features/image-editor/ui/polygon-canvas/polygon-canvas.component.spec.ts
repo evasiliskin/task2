@@ -23,6 +23,10 @@ function firePointer(element: Element, type: string, offsetX: number, offsetY: n
   element.dispatchEvent(event);
 }
 
+function fireKey(element: Element, key: string): void {
+  element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+}
+
 const square: Polygon = {
   id: 'image-1',
   imageId: 'image-1',
@@ -191,5 +195,103 @@ describe('PolygonCanvas', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Click the image to start drawing');
+  });
+
+  it('should remain keyboard-focusable but without a group role or label, when no polygon exists yet', () => {
+    expect(canvas.getAttribute('tabindex')).toBe('0');
+    expect(canvas.getAttribute('role')).toBeNull();
+    expect(canvas.getAttribute('aria-label')).toBeNull();
+  });
+
+  it('should be keyboard-focusable with an accessible label mentioning arrow keys, when a polygon exists', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+
+    expect(canvas.getAttribute('tabindex')).toBe('0');
+    expect(canvas.getAttribute('aria-label')).toContain('arrow keys');
+  });
+
+  it('should emit polygonMoved and announce the direction, when ArrowRight is pressed on an existing polygon', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+    const movedSpy = vi.fn();
+    fixture.componentInstance.polygonMoved.subscribe(movedSpy);
+
+    fireKey(canvas, 'ArrowRight');
+    fixture.detectChanges();
+
+    expect(movedSpy).toHaveBeenCalledWith({ x: 0.52, y: 0.5 });
+    expect(fixture.nativeElement.textContent).toContain('Polygon moved right.');
+  });
+
+  it('should emit polygonRotated and announce the degrees, when ] is pressed on an existing polygon', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+    const rotatedSpy = vi.fn();
+    fixture.componentInstance.polygonRotated.subscribe(rotatedSpy);
+
+    fireKey(canvas, ']');
+    fixture.detectChanges();
+
+    expect(rotatedSpy).toHaveBeenCalledWith(Math.PI / 12);
+    expect(fixture.nativeElement.textContent).toContain('Polygon rotated 15° clockwise.');
+  });
+
+  it('should emit polygonRotated in the opposite direction and announce it, when [ is pressed on an existing polygon', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+    const rotatedSpy = vi.fn();
+    fixture.componentInstance.polygonRotated.subscribe(rotatedSpy);
+
+    fireKey(canvas, '[');
+    fixture.detectChanges();
+
+    expect(rotatedSpy).toHaveBeenCalledWith(-Math.PI / 12);
+    expect(fixture.nativeElement.textContent).toContain('Polygon rotated 15° counterclockwise.');
+  });
+
+  it('should emit polygonDeleted and announce the deletion, when Delete is pressed on an existing polygon', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+    const deletedSpy = vi.fn();
+    fixture.componentInstance.polygonDeleted.subscribe(deletedSpy);
+
+    fireKey(canvas, 'Delete');
+    fixture.detectChanges();
+
+    expect(deletedSpy).toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Polygon deleted.');
+  });
+
+  it('should keep the status announcement in the DOM and the canvas focusable, when Delete triggers a synchronous polygon removal', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+
+    // Simulates the real flow: polygonDeleted -> facade -> store -> selector emits null,
+    // all within the same synchronous change-detection pass.
+    fixture.componentInstance.polygonDeleted.subscribe(() => {
+      fixture.componentRef.setInput('polygon', null);
+      fixture.detectChanges();
+    });
+
+    canvas.focus();
+    fireKey(canvas, 'Delete');
+    fixture.detectChanges();
+
+    const status: HTMLElement | null = fixture.nativeElement.querySelector(
+      '.polygon-canvas__sr-status',
+    );
+    expect(status).not.toBeNull();
+    expect(status?.textContent).toContain('Polygon deleted.');
+    expect(canvas.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('should ignore keyboard input, when no polygon exists yet', () => {
+    const movedSpy = vi.fn();
+    fixture.componentInstance.polygonMoved.subscribe(movedSpy);
+
+    fireKey(canvas, 'ArrowRight');
+
+    expect(movedSpy).not.toHaveBeenCalled();
   });
 });

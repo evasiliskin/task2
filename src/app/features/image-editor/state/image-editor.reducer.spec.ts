@@ -111,6 +111,36 @@ describe('image-editor reducer', () => {
     expect(state.entities['image-1']).toEqual(first);
     expect(state.entities['image-2']?.position).toEqual({ x: 0.9, y: 0.9 });
   });
+
+  it('should remove the matching polygon, when polygonDeleted is dispatched', () => {
+    const polygon = makePolygon('image-1');
+    const afterCreate = reducer(initialState, ImageEditorActions.polygonCreated({ polygon }));
+
+    const state = reducer(afterCreate, ImageEditorActions.polygonDeleted({ imageId: 'image-1' }));
+
+    expect(state.ids).toEqual([]);
+    expect(state.entities['image-1']).toBeUndefined();
+  });
+
+  it("should leave other images' polygons untouched, when polygonDeleted is dispatched for one imageId among several", () => {
+    const first = makePolygon('image-1');
+    const second = makePolygon('image-2');
+    const afterCreate = reducer(
+      reducer(initialState, ImageEditorActions.polygonCreated({ polygon: first })),
+      ImageEditorActions.polygonCreated({ polygon: second }),
+    );
+
+    const state = reducer(afterCreate, ImageEditorActions.polygonDeleted({ imageId: 'image-1' }));
+
+    expect(state.ids).toEqual(['image-2']);
+    expect(state.entities['image-2']).toEqual(second);
+  });
+
+  it('should be a no-op, when polygonDeleted is dispatched for an imageId with no stored polygon', () => {
+    const state = reducer(initialState, ImageEditorActions.polygonDeleted({ imageId: 'missing' }));
+
+    expect(state).toBe(initialState);
+  });
 });
 
 describe('image-editor selectors', () => {

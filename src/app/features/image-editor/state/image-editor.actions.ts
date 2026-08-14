@@ -8,5 +8,6 @@ export const ImageEditorActions = createActionGroup({
     'Polygon Created': props<{ polygon: Polygon }>(),
     'Polygon Moved': props<{ imageId: string; position: NormalizedPoint }>(),
     'Polygon Rotated': props<{ imageId: string; rotationRadians: number }>(),
+    'Polygon Deleted': props<{ imageId: string }>(),
   },
 });

@@ -10,6 +10,8 @@ import { toPixelPoint } from '../domain/geometry/to-pixel-point';
 
 export const ROTATION_HANDLE_HIT_RADIUS_PX = 12;
 export const DRAW_CLOSE_HIT_RADIUS_PX = 10;
+export const KEYBOARD_NUDGE_STEP = 0.02;
+export const KEYBOARD_ROTATION_STEP_RADIANS = Math.PI / 12;
 
 export interface DragSession {
   readonly polygon: Polygon;
@@ -94,5 +96,13 @@ export class PolygonInteractionController {
       ...session.polygon,
       rotationRadians: currentAngle - session.angleOffset,
     };
+  }
+
+  nudge(polygon: Polygon, delta: NormalizedPoint): Polygon {
+    return { ...polygon, position: addPoints(polygon.position, delta) };
+  }
+
+  rotateByStep(polygon: Polygon, deltaRadians: number): Polygon {
+    return { ...polygon, rotationRadians: polygon.rotationRadians + deltaRadians };
   }
 }

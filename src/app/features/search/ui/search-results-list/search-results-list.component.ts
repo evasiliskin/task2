@@ -1,6 +1,8 @@
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { SearchResult } from '../../domain/search-result.model';
 import { SearchResultItem } from '../search-result-item/search-result-item.component';
 
@@ -8,7 +10,7 @@ const NEAR_END_THRESHOLD = 8;
 
 @Component({
   selector: 'app-search-results-list',
-  imports: [ScrollingModule, NzButtonModule, SearchResultItem],
+  imports: [ScrollingModule, NzButtonModule, NzSpinModule, NzAlertModule, SearchResultItem],
   templateUrl: './search-results-list.component.html',
   styleUrl: './search-results-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

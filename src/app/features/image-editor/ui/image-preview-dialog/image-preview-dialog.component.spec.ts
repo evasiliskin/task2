@@ -17,6 +17,7 @@ class FakePolygonCanvas {
   readonly polygonDrawn = output<readonly NormalizedPoint[]>();
   readonly polygonMoved = output<NormalizedPoint>();
   readonly polygonRotated = output<number>();
+  readonly polygonDeleted = output<void>();
 }
 
 describe('ImagePreviewDialog', () => {
@@ -32,6 +33,7 @@ describe('ImagePreviewDialog', () => {
       createPolygon: vi.fn(),
       movePolygon: vi.fn(),
       rotatePolygon: vi.fn(),
+      deletePolygon: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -98,5 +100,17 @@ describe('ImagePreviewDialog', () => {
     canvas.polygonRotated.emit(Math.PI / 4);
 
     expect(facade.rotatePolygon).toHaveBeenCalledWith('image-1', Math.PI / 4);
+  });
+
+  it('should delete the polygon via the facade, when the canvas emits polygonDeleted', () => {
+    const facade = configure();
+    const fixture = TestBed.createComponent(ImagePreviewDialog);
+    fixture.detectChanges();
+
+    const canvas = fixture.debugElement.query(By.directive(FakePolygonCanvas))
+      .componentInstance as FakePolygonCanvas;
+    canvas.polygonDeleted.emit();
+
+    expect(facade.deletePolygon).toHaveBeenCalledWith('image-1');
   });
 });

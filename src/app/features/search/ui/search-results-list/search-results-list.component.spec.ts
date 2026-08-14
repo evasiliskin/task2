@@ -162,4 +162,16 @@ describe('SearchResultsList', () => {
 
     expect(fixture.nativeElement.textContent).not.toContain('Loading more results');
   });
+
+  it('should mark the loading-more indicator as a polite live status region', () => {
+    TestBed.configureTestingModule({ imports: [SearchResultsList] });
+    const fixture = TestBed.createComponent(SearchResultsList);
+    fixture.componentRef.setInput('results', makeResults(5));
+    fixture.componentRef.setInput('hasMoreResults', true);
+    fixture.componentRef.setInput('isLoadingMore', true);
+    fixture.detectChanges();
+
+    const loadingBlock = fixture.nativeElement.querySelector('.search-results-list__loading-more');
+    expect(loadingBlock.getAttribute('aria-live')).toBe('polite');
+  });
 });

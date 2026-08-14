@@ -19,15 +19,19 @@ export class ImageEditorFacade {
   }
 
   async open(target: ImagePreviewTarget): Promise<void> {
+    const triggerElement = document.activeElement as HTMLElement | null;
     const { ImagePreviewDialog } =
       await import('./ui/image-preview-dialog/image-preview-dialog.component');
-    this.modalService.create({
+    const modalRef = this.modalService.create({
       nzTitle: target.title,
       nzContent: ImagePreviewDialog,
       nzData: target,
       nzFooter: null,
-      nzWidth: 720,
+      nzWidth: 'min(720px, calc(100vw - 32px))',
       nzCentered: true,
+    });
+    modalRef.afterClose.subscribe(() => {
+      triggerElement?.focus();
     });
   }
 
@@ -43,5 +47,9 @@ export class ImageEditorFacade {
 
   rotatePolygon(imageId: string, rotationRadians: number): void {
     this.store.dispatch(ImageEditorActions.polygonRotated({ imageId, rotationRadians }));
+  }
+
+  deletePolygon(imageId: string): void {
+    this.store.dispatch(ImageEditorActions.polygonDeleted({ imageId }));
   }
 }

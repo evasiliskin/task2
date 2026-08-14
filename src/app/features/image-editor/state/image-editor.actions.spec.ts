@@ -36,4 +36,11 @@ describe('image-editor actions', () => {
     expect(action.imageId).toBe('image-1');
     expect(action.rotationRadians).toBe(Math.PI / 4);
   });
+
+  it('should create a Polygon Deleted action carrying the imageId, when polygonDeleted is dispatched', () => {
+    const action = ImageEditorActions.polygonDeleted({ imageId: 'image-1' });
+
+    expect(action.type).toBe('[Image Editor] Polygon Deleted');
+    expect(action.imageId).toBe('image-1');
+  });
 });
