@@ -2,12 +2,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Resolved via path.join(dirname(...)) rather than `new URL('./index.html', import.meta.url)`
-// because Vitest's jsdom test environment mis-resolves relative URLs against a Windows
-// drive-letter `file:///D:/...` base (falls back to `http://localhost:3000/...`), which then
-// makes `fileURLToPath` throw "The URL must be of scheme file". This form is unaffected and
-// portable across platforms.
-const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'index.html'), 'utf-8');
+function readRepositoryFile(relativePath: string): string {
+  return readFileSync(join(dirname(fileURLToPath(import.meta.url)), relativePath), 'utf-8');
+}
+
+const html = readRepositoryFile('index.html');
 
 describe('index.html — static SEO metadata', () => {
   it('sets an English lang attribute', () => {

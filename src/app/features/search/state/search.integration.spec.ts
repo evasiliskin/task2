@@ -7,7 +7,9 @@ import { OpenverseApi } from '../data-access/openverse-api.service';
 import { SearchResultsCache } from '../data-access/search-results-cache.service';
 import { SearchActions, SearchPageActions } from './search.actions';
 import { SearchEffects } from './search.effects';
-import { searchFeature, selectPage, selectStatus, selectSearchResults } from './search.reducer';
+import { searchFeature } from './search.reducer';
+
+const { selectPage, selectStatus, selectAll: selectSearchResults } = searchFeature;
 
 describe('search state integration (real store + real reducer + real effects)', () => {
   it('should load the next page, when the first page has succeeded', async () => {

@@ -1,6 +1,5 @@
 import {
   queryHistoryFeature,
-  selectQueryHistoryEntries,
   initialState,
   MAX_QUERY_HISTORY_ENTRIES,
 } from './query-history.reducer';
@@ -86,12 +85,12 @@ describe('query-history reducer', () => {
 });
 
 describe('query-history selectors', () => {
-  it('should return all recorded entries, when selectQueryHistoryEntries is selected', () => {
+  it('should return all recorded entries, when selectAll is selected', () => {
     const state = reducer(
       initialState,
       QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: 100 }),
     );
-    expect(selectQueryHistoryEntries({ queryHistory: state })).toEqual([
+    expect(queryHistoryFeature.selectAll({ queryHistory: state })).toEqual([
       { query: 'cats', canonicalQuery: 'cats', words: ['cats'], lastUsedAt: 100 },
     ]);
   });

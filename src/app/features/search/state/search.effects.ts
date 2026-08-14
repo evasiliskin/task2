@@ -4,50 +4,26 @@ import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import {
   catchError,
-  debounceTime,
-  distinctUntilChanged,
   exhaustMap,
   filter,
   map,
   switchMap,
   takeUntil,
-  tap,
   withLatestFrom,
 } from 'rxjs/operators';
-import { SEARCH_RESULTS_PAGE_SIZE } from '../../../core/api/openverse/openverse-api.config';
-import { isNormalizedHttpError } from '../../../core/http/http-error.interceptor';
-import { OpenverseApi } from '../data-access/openverse-api.service';
-import { InvalidApiResponseError } from '../data-access/openverse-response.guard';
-import { mapOpenverseSearchResponse } from '../data-access/search-result.mapper';
-import { SearchResultsCache } from '../data-access/search-results-cache.service';
-import { isMeaningfulQuery } from '../domain/is-meaningful-query';
-import { normalizeSearchQuery } from '../domain/normalize-search-query';
+import { SearchRepository } from '../data-access/search-repository.service';
 import { SearchActions, SearchApiActions, SearchPageActions } from './search.actions';
 import { isActivePaginationContext, selectPaginationContext } from './search.reducer';
+import { toSearchErrorKind } from './to-search-error-kind';
 
 @Injectable()
 export class SearchEffects {
   private readonly actions$ = inject(Actions);
   private readonly store = inject(Store);
-  private readonly openverseApi = inject(OpenverseApi);
-  private readonly cache = inject(SearchResultsCache);
+  private readonly repository = inject(SearchRepository);
 
   private readonly queryInvalidated$ = this.actions$.pipe(
     ofType(SearchActions.searchRequested, SearchActions.queryCleared),
-  );
-
-  debounceQuery$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(SearchPageActions.queryTyped),
-      debounceTime(300),
-      map(({ query }) => normalizeSearchQuery(query)),
-      distinctUntilChanged(),
-      map((normalizedQuery) =>
-        isMeaningfulQuery(normalizedQuery)
-          ? SearchActions.searchRequested({ query: normalizedQuery })
-          : SearchActions.queryCleared(),
-      ),
-    ),
   );
 
   performSearch$ = createEffect(() =>
@@ -87,33 +63,11 @@ export class SearchEffects {
   );
 
   private loadPage(query: string, page: number) {
-    const cached = this.cache.get(query, page);
-    if (cached) {
-      return of(SearchApiActions.loadResultsSuccess({ query, page, ...cached }));
-    }
-    return this.openverseApi.searchImages(query, page, SEARCH_RESULTS_PAGE_SIZE).pipe(
-      map(mapOpenverseSearchResponse),
-      tap((mapped) => this.cache.set(query, page, mapped)),
+    return this.repository.search(query, page).pipe(
       map((mapped) => SearchApiActions.loadResultsSuccess({ query, page, ...mapped })),
       catchError((error: unknown) =>
-        of(
-          SearchApiActions.loadResultsFailure({
-            query,
-            page,
-            message: this.toFailureMessage(error),
-          }),
-        ),
+        of(SearchApiActions.loadResultsFailure({ query, page, kind: toSearchErrorKind(error) })),
       ),
     );
-  }
-
-  private toFailureMessage(error: unknown): string {
-    if (error instanceof InvalidApiResponseError) {
-      return 'The image service returned unexpected data. Please try again.';
-    }
-    if (isNormalizedHttpError(error)) {
-      return error.message;
-    }
-    return 'Something went wrong. Please try again.';
   }
 }

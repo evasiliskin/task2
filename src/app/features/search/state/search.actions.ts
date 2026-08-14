@@ -1,10 +1,10 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { SearchResult } from '../domain/search-result.model';
+import { SearchErrorKind } from './to-search-error-kind';
 
 export const SearchPageActions = createActionGroup({
   source: 'Search Page',
   events: {
-    'Query Typed': props<{ query: string }>(),
     'Next Page Requested': emptyProps(),
   },
 });
@@ -28,6 +28,6 @@ export const SearchApiActions = createActionGroup({
       totalCount: number;
       pageCount: number;
     }>(),
-    'Load Results Failure': props<{ query: string; page: number; message: string }>(),
+    'Load Results Failure': props<{ query: string; page: number; kind: SearchErrorKind }>(),
   },
 });

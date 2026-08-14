@@ -1,9 +1,24 @@
 import { TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { Store } from '@ngrx/store';
+import { provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { ImageEditorActions } from './state/image-editor.actions';
 import { ImageEditorFacade } from './image-editor.facade';
 import { Polygon } from './domain/polygon.model';
+import { imageEditorFeature, initialState, polygonAdapter } from './state/image-editor.reducer';
+
+const POLYGON: Polygon = {
+  id: 'image-1',
+  imageId: 'image-1',
+  points: [
+    { x: 0, y: 0 },
+    { x: 0.4, y: 0 },
+    { x: 0.2, y: 0.6 },
+  ],
+  position: { x: 0.2, y: 0.2 },
+  rotationRadians: 0,
+};
 
 describe('ImageEditorFacade', () => {
   let facade: ImageEditorFacade;
@@ -64,14 +79,23 @@ describe('ImageEditorFacade', () => {
     );
   });
 
-  it('should return an observable of the store-selected polygon, for the given imageId', () => {
-    const polygon = { id: 'image-1' } as unknown as Polygon;
-    selectSpy.mockReturnValue(of(polygon));
+  it('should expose the stored polygon as a signal, when one exists for the image', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideZonelessChangeDetection(),
+        provideMockStore({
+          initialState: {
+            [imageEditorFeature.name]: polygonAdapter.setAll([POLYGON], initialState),
+          },
+        }),
+      ],
+    });
 
-    let received: Polygon | null | undefined;
-    facade.polygonFor$('image-1').subscribe((value) => (received = value));
-
-    expect(received).toEqual(polygon);
+    TestBed.runInInjectionContext(() => {
+      const facade = TestBed.inject(ImageEditorFacade);
+      expect(facade.polygonFor('image-1')()).toEqual(POLYGON);
+    });
   });
 
   it('should dispatch polygonDeleted with the imageId, when deletePolygon() is called', () => {

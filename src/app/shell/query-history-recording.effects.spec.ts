@@ -1,21 +1,27 @@
 import { TestBed } from '@angular/core/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
 import { ReplaySubject } from 'rxjs';
-import { QueryHistoryEffects } from './query-history.effects';
-import { QueryHistoryActions } from './query-history.actions';
-import { SearchApiActions } from '../../search/state/search.actions';
+import { QueryHistoryRecordingEffects } from './query-history-recording.effects';
+import { QueryHistoryActions } from '@query-history';
+import { SearchApiActions } from '@search';
+import { CLOCK } from '@core/time/clock.token';
 
-describe('QueryHistoryEffects', () => {
+describe('QueryHistoryRecordingEffects', () => {
   let actions$: ReplaySubject<unknown>;
-  let effects: QueryHistoryEffects;
+  let effects: QueryHistoryRecordingEffects;
+  const fixedTime = 1735689600000;
 
   beforeEach(() => {
     vi.useFakeTimers().setSystemTime(new Date('2026-01-01T00:00:00Z'));
     actions$ = new ReplaySubject(1);
     TestBed.configureTestingModule({
-      providers: [QueryHistoryEffects, provideMockActions(() => actions$)],
+      providers: [
+        QueryHistoryRecordingEffects,
+        provideMockActions(() => actions$),
+        { provide: CLOCK, useValue: () => fixedTime },
+      ],
     });
-    effects = TestBed.inject(QueryHistoryEffects);
+    effects = TestBed.inject(QueryHistoryRecordingEffects);
   });
 
   afterEach(() => vi.useRealTimers());
@@ -35,7 +41,7 @@ describe('QueryHistoryEffects', () => {
     });
 
     expect(emitted).toEqual(
-      QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: Date.now() }),
+      QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: fixedTime }),
     );
   });
 

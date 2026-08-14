@@ -1,7 +1,7 @@
 import { createEntityAdapter, EntityState } from '@ngrx/entity';
 import { createFeature, createReducer, on } from '@ngrx/store';
-import { toCanonicalQuery } from '../../search/domain/to-canonical-query';
 import { QueryHistoryEntry } from '../domain/query-history-entry.model';
+import { toQueryHistoryEntry } from '../domain/to-query-history-entry';
 import { QueryHistoryActions } from './query-history.actions';
 
 export const MAX_QUERY_HISTORY_ENTRIES = 50;
@@ -31,16 +31,11 @@ function evictLeastRecentlyUsed(state: QueryHistoryState): QueryHistoryState {
 
 const queryHistoryReducer = createReducer(
   initialState,
-  on(QueryHistoryActions.queryRecorded, (state, { query, usedAt }) => {
-    const canonicalQuery = toCanonicalQuery(query);
-    const entry: QueryHistoryEntry = {
-      query,
-      canonicalQuery,
-      words: canonicalQuery.split(' ').filter((word) => word.length > 0),
-      lastUsedAt: usedAt,
-    };
-    return evictLeastRecentlyUsed(queryHistoryAdapter.upsertOne(entry, state));
-  }),
+  on(QueryHistoryActions.queryRecorded, (state, { query, usedAt }) =>
+    evictLeastRecentlyUsed(
+      queryHistoryAdapter.upsertOne(toQueryHistoryEntry(query, usedAt), state),
+    ),
+  ),
 );
 
 export const queryHistoryFeature = createFeature({
@@ -50,6 +45,3 @@ export const queryHistoryFeature = createFeature({
     ...queryHistoryAdapter.getSelectors(selectQueryHistoryState),
   }),
 });
-
-export const { selectQueryHistoryState, selectAll: selectQueryHistoryEntries } =
-  queryHistoryFeature;

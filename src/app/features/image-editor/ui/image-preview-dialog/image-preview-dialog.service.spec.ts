@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { NzModalService } from 'ng-zorro-antd/modal';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { ImagePreviewTarget } from '../../domain/image-preview-target.model';
 import { ImagePreviewDialogService } from './image-preview-dialog.service';
 
@@ -14,12 +14,38 @@ const target: ImagePreviewTarget = {
 
 describe('ImagePreviewDialogService', () => {
   let create: ReturnType<typeof vi.fn>;
+  let openModals: unknown[];
+  let afterOpen: Subject<void>;
   let service: ImagePreviewDialogService;
+  let modalElement: HTMLElement;
 
   beforeEach(() => {
-    create = vi.fn().mockReturnValue({ afterClose: of(undefined) });
+    openModals = [];
+    afterOpen = new Subject<void>();
+    modalElement = document.createElement('div');
+    modalElement.setAttribute('role', 'dialog');
+    create = vi.fn().mockImplementation(() => {
+      const modalRef = {
+        afterOpen,
+        afterClose: of(undefined),
+        getElement: () => modalElement,
+      };
+      openModals.push(modalRef);
+      return modalRef;
+    });
     TestBed.configureTestingModule({
-      providers: [ImagePreviewDialogService, { provide: NzModalService, useValue: { create } }],
+      providers: [
+        ImagePreviewDialogService,
+        {
+          provide: NzModalService,
+          useValue: {
+            create,
+            get openModals() {
+              return openModals;
+            },
+          },
+        },
+      ],
     });
     service = TestBed.inject(ImagePreviewDialogService);
   });
@@ -44,19 +70,52 @@ describe('ImagePreviewDialogService', () => {
     trigger.remove();
   });
 
-  it('should resolve without throwing, when the modal cannot be created', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('should reject and restore focus to the triggering element, when the modal cannot be created', async () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const focusSpy = vi.spyOn(trigger, 'focus');
+    const error = new Error('chunk load failed');
     create.mockImplementation(() => {
-      throw new Error('chunk load failed');
+      throw error;
     });
 
-    await expect(service.open(target)).resolves.toBeUndefined();
-    expect(errorSpy).toHaveBeenCalledWith(
-      'Failed to open the image preview dialog',
-      expect.any(Error),
-    );
+    await expect(service.open(target)).rejects.toThrow(error);
 
-    errorSpy.mockRestore();
+    expect(focusSpy).toHaveBeenCalled();
+    trigger.remove();
+  });
+
+  it('should open a single modal, when open is called twice in a row', async () => {
+    const service = TestBed.inject(ImagePreviewDialogService);
+
+    await Promise.all([service.open(target), service.open(target)]);
+
+    expect(TestBed.inject(NzModalService).openModals).toHaveLength(1);
+  });
+
+  it('sets aria-modal and aria-labelledby on the dialog container, referencing the ant-modal-title element', async () => {
+    const titleEl = document.createElement('div');
+    titleEl.className = 'ant-modal-title';
+    modalElement.appendChild(titleEl);
+
+    await service.open(target);
+    afterOpen.next();
+
+    expect(modalElement.getAttribute('aria-modal')).toBe('true');
+    const labelledBy = modalElement.getAttribute('aria-labelledby');
+    expect(labelledBy).toBeTruthy();
+    expect(titleEl.id).toBe(labelledBy);
+  });
+
+  it('throws in dev mode, when labelDialog runs without the expected dialog markup', () => {
+    const serviceWithPrivateAccess = service as unknown as {
+      labelDialog(modalRef: { getElement(): HTMLElement }): void;
+    };
+    const emptyModalRef = { getElement: () => document.createElement('div') };
+
+    expect(() => serviceWithPrivateAccess.labelDialog(emptyModalRef)).toThrow(
+      'Image preview dialog markup changed: expected [role="dialog"] with .ant-modal-title.',
+    );
   });
 });

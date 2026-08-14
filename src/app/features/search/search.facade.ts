@@ -1,16 +1,39 @@
 import { Injectable, inject } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
-import { SearchPageActions, SearchActions } from './state/search.actions';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
+import { isMeaningfulQuery, normalizeSearchQuery } from '@shared/search-query';
+import { SEARCH_DEBOUNCE_MS } from './domain/search-debounce';
+import { SearchActions, SearchPageActions } from './state/search.actions';
 import { selectSearchViewModel } from './state/search.reducer';
 
 @Injectable({ providedIn: 'root' })
 export class SearchFacade {
   private readonly store = inject(Store);
+  private readonly queryInput$ = new Subject<string>();
 
-  readonly viewModel$ = this.store.select(selectSearchViewModel);
+  readonly viewModel = toSignal(this.store.select(selectSearchViewModel), { requireSync: true });
 
-  search(query: string): void {
-    this.store.dispatch(SearchPageActions.queryTyped({ query }));
+  constructor() {
+    this.queryInput$
+      .pipe(
+        debounceTime(SEARCH_DEBOUNCE_MS),
+        map(normalizeSearchQuery),
+        distinctUntilChanged(),
+        takeUntilDestroyed(),
+      )
+      .subscribe((query) => {
+        this.store.dispatch(
+          isMeaningfulQuery(query)
+            ? SearchActions.searchRequested({ query })
+            : SearchActions.queryCleared(),
+        );
+      });
+  }
+
+  queryChanged(query: string): void {
+    this.queryInput$.next(query);
   }
 
   loadNextPage(): void {

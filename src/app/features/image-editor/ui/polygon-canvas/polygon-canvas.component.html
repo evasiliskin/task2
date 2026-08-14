@@ -17,9 +17,6 @@
       role="group"
       [attr.aria-label]="polygon() ? editorAriaLabel : drawAriaLabel"
       (pointerdown)="onPointerDown($event)"
-      (pointermove)="onPointerMove($event)"
-      (pointerup)="onPointerUp($event)"
-      (pointercancel)="onPointerUp($event)"
       (dblclick)="onCanvasDoubleClick()"
       (keydown)="onKeyDown($event)"
     ></canvas>
@@ -38,10 +35,6 @@
       Polygon drawing is unavailable — this browser did not provide a 2D canvas context.
     </p>
   }
-
-  <span class="polygon-canvas__sr-status" role="status" aria-live="polite">
-    {{ editStatus() }}
-  </span>
 
   @if (!polygon() && imageStatus() === 'loaded') {
     <div class="polygon-canvas__draw-controls">

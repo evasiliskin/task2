@@ -2,6 +2,7 @@ import { createEntityAdapter, EntityState } from '@ngrx/entity';
 import { createFeature, createReducer, createSelector, on } from '@ngrx/store';
 import { SearchResult } from '../domain/search-result.model';
 import { SearchActions, SearchApiActions, SearchPageActions } from './search.actions';
+import { SearchErrorKind } from './to-search-error-kind';
 
 export type SearchStatus =
   'idle' | 'loading' | 'loadingMore' | 'success' | 'error' | 'loadingMoreError';
@@ -9,9 +10,8 @@ export type SearchStatus =
 export interface SearchState extends EntityState<SearchResult> {
   readonly activeQuery: string | null;
   readonly status: SearchStatus;
-  readonly error: string | null;
+  readonly error: SearchErrorKind | null;
   readonly page: number;
-  readonly totalCount: number;
   readonly pageCount: number;
 }
 
@@ -22,7 +22,6 @@ export const initialState: SearchState = searchResultsAdapter.getInitialState({
   status: 'idle',
   error: null,
   page: 0,
-  totalCount: 0,
   pageCount: 0,
 });
 
@@ -37,7 +36,6 @@ export const searchFeature = createFeature({
         status: 'loading',
         error: null,
         page: 0,
-        totalCount: 0,
         pageCount: 0,
       }),
     ),
@@ -50,7 +48,6 @@ export const searchFeature = createFeature({
             status: 'idle',
             error: null,
             page: 0,
-            totalCount: 0,
             pageCount: 0,
           }),
     ),
@@ -60,35 +57,31 @@ export const searchFeature = createFeature({
         ? { ...state, status: 'loadingMore', error: null }
         : state,
     ),
-    on(
-      SearchApiActions.loadResultsSuccess,
-      (state, { query, page, results, totalCount, pageCount }) => {
-        if (query !== state.activeQuery) {
-          return state;
-        }
-        const withResults =
-          page === 1
-            ? searchResultsAdapter.setAll(results, state)
-            : searchResultsAdapter.upsertMany(results, state);
-        return {
-          ...withResults,
-          status: 'success' as const,
-          error: null,
-          page,
-          totalCount,
-          pageCount,
-        };
-      },
-    ),
-    on(SearchApiActions.loadResultsFailure, (state, { query, page, message }) => {
+    on(SearchApiActions.loadResultsSuccess, (state, { query, page, results, pageCount }) => {
+      if (query !== state.activeQuery) {
+        return state;
+      }
+      const withResults =
+        page === 1
+          ? searchResultsAdapter.setAll(results, state)
+          : searchResultsAdapter.upsertMany(results, state);
+      return {
+        ...withResults,
+        status: 'success' as const,
+        error: null,
+        page,
+        pageCount,
+      };
+    }),
+    on(SearchApiActions.loadResultsFailure, (state, { query, page, kind }) => {
       if (query !== state.activeQuery) {
         return state;
       }
       if (state.status === 'loadingMore' && page === state.page + 1) {
-        return { ...state, status: 'loadingMoreError' as const, error: message };
+        return { ...state, status: 'loadingMoreError' as const, error: kind };
       }
       if (state.status === 'loading' && page === 1) {
-        return { ...state, status: 'error' as const, error: message };
+        return { ...state, status: 'error' as const, error: kind };
       }
       return state;
     }),
@@ -129,23 +122,10 @@ export function isActivePaginationContext(
   return context.activeQuery !== null;
 }
 
-export const {
-  selectSearchState,
-  selectActiveQuery,
-  selectStatus,
-  selectError,
-  selectPage,
-  selectPageCount,
-  selectAll: selectSearchResults,
-  selectHasMoreResults,
-  selectIsLoadingMore,
-  selectIsLoadingMoreError,
-} = searchFeature;
-
 export interface SearchViewModel {
   readonly results: readonly SearchResult[];
   readonly status: SearchStatus;
-  readonly error: string | null;
+  readonly error: SearchErrorKind | null;
   readonly activeQuery: string | null;
   readonly hasMoreResults: boolean;
   readonly isLoadingMore: boolean;
@@ -153,13 +133,13 @@ export interface SearchViewModel {
 }
 
 export const selectSearchViewModel = createSelector(
-  selectSearchResults,
-  selectStatus,
-  selectError,
-  selectActiveQuery,
-  selectHasMoreResults,
-  selectIsLoadingMore,
-  selectIsLoadingMoreError,
+  searchFeature.selectAll,
+  searchFeature.selectStatus,
+  searchFeature.selectError,
+  searchFeature.selectActiveQuery,
+  searchFeature.selectHasMoreResults,
+  searchFeature.selectIsLoadingMore,
+  searchFeature.selectIsLoadingMoreError,
   (
     results,
     status,

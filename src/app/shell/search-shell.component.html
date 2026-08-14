@@ -1,27 +1,30 @@
-<section class="search-page" aria-label="Image search">
-  <app-search-input />
+<section class="search-shell" aria-label="Image search">
+  <app-search-input
+    [query]="queryText()"
+    [suggestions]="suggestions()"
+    (queryChange)="onQueryChange($event)"
+  />
 
   @let vm = viewModel();
 
   @if (vm.status === 'idle') {
-    <p class="search-page__idle">Start typing to search millions of openly-licensed images.</p>
+    <p class="search-shell__idle">Start typing to search millions of openly-licensed images.</p>
   } @else if (vm.status === 'loading') {
-    <div class="search-page__loading" role="status" aria-live="polite">
+    <div class="search-shell__loading" role="status" aria-live="polite">
       <nz-spin nzSimple />
       <span>Searching…</span>
     </div>
   } @else if (vm.status === 'error') {
-    <app-search-error-state [message]="vm.error ?? 'Something went wrong.'" (retry)="onRetry()" />
+    <app-search-error-state [errorKind]="vm.error" (retry)="onRetry()" />
   } @else if (vm.status === 'success' && vm.results.length === 0) {
     <app-search-empty-state [query]="vm.activeQuery ?? ''" />
   } @else if (vm.results.length > 0) {
     <h2 class="visually-hidden">Search results</h2>
     <app-search-results-list
       [results]="vm.results"
-      [hasMoreResults]="vm.hasMoreResults"
       [isLoadingMore]="vm.isLoadingMore"
       [isLoadingMoreError]="vm.isLoadingMoreError"
-      (nextPageRequested)="onNextPageRequested()"
+      (scrolled)="onScrolled($event)"
       (retry)="onRetry()"
       (resultSelected)="onResultSelected($event)"
     />

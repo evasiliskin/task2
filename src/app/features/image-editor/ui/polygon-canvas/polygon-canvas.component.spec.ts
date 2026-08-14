@@ -1,12 +1,24 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Polygon } from '../../domain/polygon.model';
 import { PolygonCanvas } from './polygon-canvas.component';
 
+let resizeObserverInstances: FakeResizeObserver[] = [];
+
 class FakeResizeObserver {
-  constructor(private readonly callback: ResizeObserverCallback) {}
+  constructor(private readonly callback: ResizeObserverCallback) {
+    resizeObserverInstances.push(this);
+  }
 
   observe(): void {
-    const contentRect = { width: 100, height: 100 } as DOMRectReadOnly;
+    this.trigger(100, 100);
+  }
+
+  trigger(width: number, height: number): void {
+    const contentRect = { width, height } as DOMRectReadOnly;
     this.callback([{ contentRect } as ResizeObserverEntry], this as unknown as ResizeObserver);
   }
 
@@ -42,11 +54,17 @@ const square: Polygon = {
 describe('PolygonCanvas', () => {
   let fixture: ComponentFixture<PolygonCanvas>;
   let canvas: HTMLElement;
+  let liveAnnouncerSpy: { announce: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
+    resizeObserverInstances = [];
     vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    liveAnnouncerSpy = { announce: vi.fn().mockResolvedValue(undefined) };
 
-    TestBed.configureTestingModule({ imports: [PolygonCanvas] });
+    TestBed.configureTestingModule({
+      imports: [PolygonCanvas],
+      providers: [{ provide: LiveAnnouncer, useValue: liveAnnouncerSpy }],
+    });
     fixture = TestBed.createComponent(PolygonCanvas);
     fixture.componentRef.setInput('imageUrl', 'https://example.test/image.jpg');
     fixture.componentRef.setInput('imageAlt', 'A test image');
@@ -178,6 +196,40 @@ describe('PolygonCanvas', () => {
     expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo(Math.PI / 2, 9);
   });
 
+  it('should ignore a second pointerdown and keep tracking the first gesture, when it arrives before the first gesture ends', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+
+    const movedSpy = vi.fn();
+    fixture.componentInstance.polygonMoved.subscribe(movedSpy);
+
+    firePointer(canvas, 'pointerdown', 50, 50);
+    firePointer(canvas, 'pointerdown', 55, 55);
+    firePointer(canvas, 'pointermove', 60, 50);
+    firePointer(canvas, 'pointerup', 60, 50);
+
+    expect(movedSpy).toHaveBeenCalledTimes(1);
+    expect(movedSpy).toHaveBeenCalledWith({ x: 0.6, y: 0.5 });
+  });
+
+  it('should abort the gesture without throwing and without emitting, when the box size becomes zero mid-drag', () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+
+    const movedSpy = vi.fn();
+    fixture.componentInstance.polygonMoved.subscribe(movedSpy);
+
+    firePointer(canvas, 'pointerdown', 50, 50);
+    resizeObserverInstances[0].trigger(0, 0);
+    fixture.detectChanges();
+
+    expect(() => firePointer(canvas, 'pointermove', 60, 50)).not.toThrow();
+    expect(movedSpy).not.toHaveBeenCalled();
+
+    firePointer(canvas, 'pointerup', 60, 50);
+    expect(movedSpy).not.toHaveBeenCalled();
+  });
+
   it('should hide the draw controls, when a polygon already exists', () => {
     fixture.componentRef.setInput('polygon', square);
     fixture.detectChanges();
@@ -225,7 +277,7 @@ describe('PolygonCanvas', () => {
     fixture.detectChanges();
 
     expect(movedSpy).toHaveBeenCalledWith({ x: 0.52, y: 0.5 });
-    expect(fixture.nativeElement.textContent).toContain('Polygon moved right.');
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon moved right.');
   });
 
   it('should emit polygonRotated and announce the degrees, when ] is pressed on an existing polygon', () => {
@@ -239,7 +291,7 @@ describe('PolygonCanvas', () => {
 
     expect(rotatedSpy).toHaveBeenCalled();
     expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo(Math.PI / 12, 12);
-    expect(fixture.nativeElement.textContent).toContain('Polygon rotated 15° clockwise.');
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon rotated 15° clockwise.');
   });
 
   it('should emit polygonRotated in the opposite direction and announce it, when [ is pressed on an existing polygon', () => {
@@ -253,7 +305,7 @@ describe('PolygonCanvas', () => {
 
     expect(rotatedSpy).toHaveBeenCalled();
     expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo(Math.PI * 2 - Math.PI / 12, 12);
-    expect(fixture.nativeElement.textContent).toContain('Polygon rotated 15° counterclockwise.');
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon rotated 15° counterclockwise.');
   });
 
   it('should emit polygonDeleted and announce the deletion, when Delete is pressed on an existing polygon', () => {
@@ -266,10 +318,10 @@ describe('PolygonCanvas', () => {
     fixture.detectChanges();
 
     expect(deletedSpy).toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Polygon deleted.');
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
   });
 
-  it('should keep the status announcement in the DOM and the canvas focusable, when Delete triggers a synchronous polygon removal', () => {
+  it('should announce the deletion and keep the canvas focusable, when Delete triggers a synchronous polygon removal', () => {
     fixture.componentRef.setInput('polygon', square);
     fixture.detectChanges();
 
@@ -284,11 +336,7 @@ describe('PolygonCanvas', () => {
     fireKey(canvas, 'Delete');
     fixture.detectChanges();
 
-    const status: HTMLElement | null = fixture.nativeElement.querySelector(
-      '.polygon-canvas__sr-status',
-    );
-    expect(status).not.toBeNull();
-    expect(status?.textContent).toContain('Polygon deleted.');
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
     expect(canvas.getAttribute('tabindex')).toBe('0');
   });
 
@@ -366,7 +414,7 @@ describe('PolygonCanvas', () => {
     fixture.detectChanges();
 
     expect(deletedSpy).toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Polygon deleted.');
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
   });
 
   it('should not render the edit controls, when no polygon exists', () => {
@@ -416,5 +464,29 @@ describe('PolygonCanvas', () => {
     fixture.detectChanges();
 
     expect(drawnSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not bind pointermove in the template, so idle pointer motion cannot schedule change detection', () => {
+    const template = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'polygon-canvas.component.html'),
+      'utf-8',
+    );
+
+    expect(template).not.toContain('(pointermove)');
+    expect(template).not.toContain('(pointerup)');
+    expect(template).not.toContain('(pointercancel)');
+    expect(template).toContain('(pointerdown)');
+  });
+
+  it('should obtain its collaborators by injection, not by construction', () => {
+    const source = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'polygon-canvas.component.ts'),
+      'utf-8',
+    );
+
+    expect(source).not.toContain('new PolygonCanvasRenderer(');
+    expect(source).not.toContain('new PolygonInteractionController(');
+    expect(source).toContain('inject(POLYGON_CANVAS_RENDERER)');
+    expect(source).toContain('inject(POLYGON_INTERACTION_CONTROLLER)');
   });
 });

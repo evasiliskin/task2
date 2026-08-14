@@ -23,13 +23,7 @@ export function isImageEntry(value: unknown): value is OpenverseImageDto {
   );
 }
 
-/**
- * Validates only the response envelope. Individual malformed entries within
- * `results` are not rejected here — Openverse doesn't guarantee every field
- * on every entry, so callers filter entries with `isImageEntry` instead of
- * failing the whole page over one bad item.
- */
-export function assertOpenverseSearchResponse(
+export function assertSearchResponseEnvelope(
   value: unknown,
 ): asserts value is OpenverseSearchResponseDto {
   if (!isRecord(value)) {

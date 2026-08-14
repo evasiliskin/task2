@@ -1,6 +1,6 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Signal, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
-import { Observable } from 'rxjs';
 import { createPolygonFromPoints } from './domain/geometry/create-polygon-from-points';
 import { NormalizedPoint } from './domain/normalized-point.model';
 import { Polygon } from './domain/polygon.model';
@@ -10,9 +10,12 @@ import { imageEditorFeature } from './state/image-editor.reducer';
 @Injectable({ providedIn: 'root' })
 export class ImageEditorFacade {
   private readonly store = inject(Store);
+  private readonly entities = toSignal(this.store.select(imageEditorFeature.selectEntities), {
+    requireSync: true,
+  });
 
-  polygonFor$(imageId: string): Observable<Polygon | null> {
-    return this.store.select(imageEditorFeature.selectPolygonByImageId(imageId));
+  polygonFor(imageId: string): Signal<Polygon | null> {
+    return computed(() => this.entities()[imageId] ?? null);
   }
 
   createPolygon(rawPoints: readonly NormalizedPoint[], imageId: string): void {

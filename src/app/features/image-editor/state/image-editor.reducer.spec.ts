@@ -1,4 +1,4 @@
-import { imageEditorFeature, initialState } from './image-editor.reducer';
+import { imageEditorFeature, initialState, MAX_STORED_POLYGONS } from './image-editor.reducer';
 import { ImageEditorActions } from './image-editor.actions';
 import { Polygon } from '../domain/polygon.model';
 
@@ -141,21 +141,46 @@ describe('image-editor reducer', () => {
 
     expect(state).toBe(initialState);
   });
+
+  it('should evict the oldest polygon, when the cap is exceeded', () => {
+    const state = Array.from({ length: MAX_STORED_POLYGONS + 1 }, (_unused, index) => index).reduce(
+      (accumulated, index) =>
+        imageEditorFeature.reducer(
+          accumulated,
+          ImageEditorActions.polygonCreated({
+            polygon: {
+              id: `image-${index}`,
+              imageId: `image-${index}`,
+              points: [
+                { x: 0, y: 0 },
+                { x: 1, y: 0 },
+                { x: 0, y: 1 },
+              ],
+              position: { x: 0.5, y: 0.5 },
+              rotationRadians: 0,
+            },
+          }),
+        ),
+      initialState,
+    );
+
+    expect(state.ids).toHaveLength(MAX_STORED_POLYGONS);
+    expect(state.entities['image-0']).toBeUndefined();
+    expect(state.entities[`image-${MAX_STORED_POLYGONS}`]).toBeDefined();
+  });
 });
 
 describe('image-editor selectors', () => {
-  it('should return the stored polygon, when selectPolygonByImageId is selected for an image with a saved polygon', () => {
+  it('should return the stored polygon, when selectEntities is selected for an image with a saved polygon', () => {
     const polygon = makePolygon('image-1');
     const state = reducer(initialState, ImageEditorActions.polygonCreated({ polygon }));
 
-    expect(imageEditorFeature.selectPolygonByImageId('image-1')({ imageEditor: state })).toEqual(
-      polygon,
-    );
+    expect(imageEditorFeature.selectEntities({ imageEditor: state })['image-1']).toEqual(polygon);
   });
 
-  it('should return null, when selectPolygonByImageId is selected for an image with no saved polygon', () => {
+  it('should return undefined, when selectEntities is selected for an image with no saved polygon', () => {
     expect(
-      imageEditorFeature.selectPolygonByImageId('missing')({ imageEditor: initialState }),
-    ).toBeNull();
+      imageEditorFeature.selectEntities({ imageEditor: initialState })['missing'],
+    ).toBeUndefined();
   });
 });

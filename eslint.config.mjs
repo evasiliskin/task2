@@ -38,4 +38,26 @@ export default defineConfig([
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {},
   },
+  {
+    files: ['src/app/features/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@search', '@query-history', '@image-editor'],
+              message:
+                'Features must not import other features. Compose them in src/app/shell.',
+            },
+            {
+              group: ['../../../*', '../../../**'],
+              message:
+                'Features must not climb out of their own folder. Use @core/*, @shared/* or compose in src/app/shell.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);

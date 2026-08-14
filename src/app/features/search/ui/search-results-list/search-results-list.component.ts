@@ -3,12 +3,14 @@ import { ChangeDetectionStrategy, Component, input, output, viewChild } from '@a
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import {
-  SEARCH_RESULT_ROW_HEIGHT_PX,
-  shouldLoadNextPage,
-} from '../../domain/should-load-next-page';
+import { SEARCH_RESULT_ROW_HEIGHT_PX } from '../../domain/should-load-next-page';
 import { SearchResult } from '../../domain/search-result.model';
 import { SearchResultItem } from '../search-result-item/search-result-item.component';
+
+export interface VisibleRange {
+  readonly firstVisibleIndex: number;
+  readonly visibleRowCount: number;
+}
 
 @Component({
   selector: 'app-search-results-list',
@@ -17,20 +19,20 @@ import { SearchResultItem } from '../search-result-item/search-result-item.compo
   styleUrl: './search-results-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '[style.--search-result-row-height]': 'rowHeightPx + "px"',
+    '[style.--search-result-row-height]': 'rowHeightStyle',
   },
 })
 export class SearchResultsList {
   readonly results = input.required<readonly SearchResult[]>();
-  readonly hasMoreResults = input(false);
   readonly isLoadingMore = input(false);
   readonly isLoadingMoreError = input(false);
 
   readonly resultSelected = output<SearchResult>();
-  readonly nextPageRequested = output<void>();
+  readonly scrolled = output<VisibleRange>();
   readonly retry = output<void>();
 
   protected readonly rowHeightPx = SEARCH_RESULT_ROW_HEIGHT_PX;
+  protected readonly rowHeightStyle = `${SEARCH_RESULT_ROW_HEIGHT_PX}px`;
 
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
@@ -40,19 +42,9 @@ export class SearchResultsList {
 
   protected onScrolledIndexChange(firstVisibleIndex: number): void {
     const viewportSize = this.viewport()?.getViewportSize() ?? 0;
-    const visibleRowCount = Math.ceil(viewportSize / SEARCH_RESULT_ROW_HEIGHT_PX);
-
-    const shouldLoad = shouldLoadNextPage({
+    this.scrolled.emit({
       firstVisibleIndex,
-      visibleRowCount,
-      loadedCount: this.results().length,
-      hasMoreResults: this.hasMoreResults(),
-      isLoadingMore: this.isLoadingMore(),
-      isLoadingMoreError: this.isLoadingMoreError(),
+      visibleRowCount: Math.ceil(viewportSize / SEARCH_RESULT_ROW_HEIGHT_PX),
     });
-
-    if (shouldLoad) {
-      this.nextPageRequested.emit();
-    }
   }
 }

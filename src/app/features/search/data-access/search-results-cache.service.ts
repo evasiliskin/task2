@@ -1,4 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import kebabCase from 'lodash/kebabCase';
+import { CLOCK } from '@core/time/clock.token';
 import { MappedSearchPage } from './search-result.mapper';
 
 export const MAX_CACHE_ENTRIES = 30;
@@ -11,6 +13,7 @@ interface CacheEntry {
 
 @Injectable({ providedIn: 'root' })
 export class SearchResultsCache {
+  private readonly now = inject(CLOCK);
   private readonly entries = new Map<string, CacheEntry>();
 
   get(query: string, page: number): MappedSearchPage | undefined {
@@ -19,7 +22,7 @@ export class SearchResultsCache {
     if (!entry) {
       return undefined;
     }
-    if (Date.now() - entry.storedAt >= CACHE_TTL_MS) {
+    if (this.now() - entry.storedAt >= CACHE_TTL_MS) {
       this.entries.delete(key);
       return undefined;
     }
@@ -31,7 +34,7 @@ export class SearchResultsCache {
   set(query: string, page: number, value: MappedSearchPage): void {
     const key = this.cacheKey(query, page);
     this.entries.delete(key);
-    this.entries.set(key, { value, storedAt: Date.now() });
+    this.entries.set(key, { value, storedAt: this.now() });
 
     while (this.entries.size > MAX_CACHE_ENTRIES) {
       const leastRecentlyUsedKey = this.entries.keys().next().value;
@@ -43,6 +46,6 @@ export class SearchResultsCache {
   }
 
   private cacheKey(query: string, page: number): string {
-    return `${query}|${page}`;
+    return `${kebabCase(query)}::${encodeURIComponent(query)}::${page}`;
   }
 }

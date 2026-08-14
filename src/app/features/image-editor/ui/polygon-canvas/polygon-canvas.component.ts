@@ -7,11 +7,16 @@ import {
   effect,
   inject,
   input,
+  linkedSignal,
   output,
   signal,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { fromEvent, merge } from 'rxjs';
+import { take, takeUntil } from 'rxjs/operators';
 import { CanvasBoxSize, PixelPoint } from '../../domain/geometry/coordinate-mapping.model';
 import { MIN_POLYGON_POINTS } from '../../domain/geometry/create-polygon-from-points';
 import { toNormalizedPoint } from '../../domain/geometry/to-normalized-point';
@@ -21,10 +26,10 @@ import {
   DragSession,
   KEYBOARD_NUDGE_STEP,
   KEYBOARD_ROTATION_STEP_RADIANS,
-  PolygonInteractionController,
   RotateSession,
 } from '../../interaction/polygon-interaction-controller';
-import { PolygonCanvasRenderer } from '../../rendering/polygon-canvas-renderer';
+import { POLYGON_INTERACTION_CONTROLLER } from '../../interaction/polygon-interaction.token';
+import { POLYGON_CANVAS_RENDERER } from '../../rendering/polygon-renderer.token';
 
 type ActiveGesture =
   | { readonly kind: 'drag'; readonly session: DragSession }
@@ -38,6 +43,7 @@ interface RenderFrame {
 }
 
 const KEYBOARD_ROTATION_STEP_DEGREES = Math.round((KEYBOARD_ROTATION_STEP_RADIANS * 180) / Math.PI);
+const EMPTY_DRAW_POINTS: readonly NormalizedPoint[] = [];
 
 @Component({
   selector: 'app-polygon-canvas',
@@ -59,10 +65,13 @@ export class PolygonCanvas {
   readonly polygonDeleted = output<void>();
 
   protected readonly minPoints = MIN_POLYGON_POINTS;
-  protected readonly drawPoints = signal<readonly NormalizedPoint[]>([]);
+  protected readonly drawPoints = linkedSignal<Polygon | null, readonly NormalizedPoint[]>({
+    source: this.polygon,
+    computation: (polygon, previous) =>
+      polygon ? EMPTY_DRAW_POINTS : (previous?.value ?? EMPTY_DRAW_POINTS),
+  });
   protected readonly draftPolygon = signal<Polygon | null>(null);
   protected readonly displayPolygon = computed(() => this.draftPolygon() ?? this.polygon());
-  protected readonly editStatus = signal('');
   protected readonly canvasUnavailable = signal(false);
   protected readonly imageStatus = signal<'loading' | 'loaded' | 'error'>('loading');
   protected readonly drawAriaLabel = 'Polygon editor. Click the image to start drawing a polygon.';
@@ -73,8 +82,9 @@ export class PolygonCanvas {
   private readonly imageEl = viewChild.required<ElementRef<HTMLImageElement>>('imageEl');
   private readonly canvasEl = viewChild.required<ElementRef<HTMLCanvasElement>>('canvasEl');
 
-  private readonly controller = new PolygonInteractionController();
-  private readonly renderer = new PolygonCanvasRenderer();
+  private readonly controller = inject(POLYGON_INTERACTION_CONTROLLER);
+  private readonly renderer = inject(POLYGON_CANVAS_RENDERER);
+  private readonly liveAnnouncer = inject(LiveAnnouncer);
   private activeGesture: ActiveGesture | null = null;
 
   private readonly destroyRef = inject(DestroyRef);
@@ -91,12 +101,6 @@ export class PolygonCanvas {
       });
       observer.observe(element);
       onCleanup(() => observer.disconnect());
-    });
-
-    effect(() => {
-      if (this.polygon()) {
-        this.drawPoints.set([]);
-      }
     });
 
     effect(() => {
@@ -130,6 +134,10 @@ export class PolygonCanvas {
       return;
     }
 
+    if (this.activeGesture) {
+      return;
+    }
+
     const pixelPointer: PixelPoint = { x: event.offsetX, y: event.offsetY };
     const currentPolygon = this.polygon();
 
@@ -143,41 +151,65 @@ export class PolygonCanvas {
     }
 
     if (this.controller.hitTestRotationHandle(currentPolygon, pixelPointer, boxSize)) {
-      this.activeGesture = {
+      this.startGesture(event, {
         kind: 'rotate',
         session: this.controller.beginRotate(currentPolygon, pixelPointer, boxSize),
-      };
-      this.canvasEl().nativeElement.setPointerCapture?.(event.pointerId);
+      });
       return;
     }
 
     if (this.controller.hitTestBody(currentPolygon, pixelPointer, boxSize)) {
-      this.activeGesture = {
+      this.startGesture(event, {
         kind: 'drag',
         session: this.controller.beginDrag(currentPolygon, pixelPointer),
-      };
-      this.canvasEl().nativeElement.setPointerCapture?.(event.pointerId);
+      });
     }
   }
 
-  protected onPointerMove(event: PointerEvent): void {
-    if (!this.activeGesture) {
+  private startGesture(event: PointerEvent, gesture: ActiveGesture): void {
+    const canvas = this.canvasEl().nativeElement;
+    this.activeGesture = gesture;
+    canvas.setPointerCapture?.(event.pointerId);
+
+    const gestureEnd$ = merge(
+      fromEvent<PointerEvent>(canvas, 'pointerup'),
+      fromEvent<PointerEvent>(canvas, 'pointercancel'),
+    ).pipe(take(1));
+
+    fromEvent<PointerEvent>(canvas, 'pointermove')
+      .pipe(takeUntil(gestureEnd$), takeUntilDestroyed(this.destroyRef))
+      .subscribe((moveEvent) => this.updateGesture(moveEvent));
+
+    gestureEnd$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((endEvent) => this.endGesture(endEvent));
+  }
+
+  private updateGesture(event: PointerEvent): void {
+    const activeGesture = this.activeGesture;
+    if (!activeGesture) {
       return;
     }
-    const pixelPointer: PixelPoint = { x: event.offsetX, y: event.offsetY };
-    const boxSize = this.boxSize();
 
+    const boxSize = this.boxSize();
+    if (boxSize.width <= 0 || boxSize.height <= 0) {
+      this.abortGesture(event);
+      return;
+    }
+
+    const pixelPointer: PixelPoint = { x: event.offsetX, y: event.offsetY };
     this.draftPolygon.set(
-      this.activeGesture.kind === 'drag'
-        ? this.controller.updateDrag(this.activeGesture.session, pixelPointer, boxSize)
-        : this.controller.updateRotate(this.activeGesture.session, pixelPointer, boxSize),
+      activeGesture.kind === 'drag'
+        ? this.controller.updateDrag(activeGesture.session, pixelPointer, boxSize)
+        : this.controller.updateRotate(activeGesture.session, pixelPointer, boxSize),
     );
   }
 
-  protected onPointerUp(event: PointerEvent): void {
+  private endGesture(event: PointerEvent): void {
     if (!this.activeGesture) {
       return;
     }
+
     const finalPolygon = this.draftPolygon();
     if (finalPolygon) {
       if (this.activeGesture.kind === 'drag') {
@@ -187,6 +219,10 @@ export class PolygonCanvas {
       }
     }
 
+    this.abortGesture(event);
+  }
+
+  private abortGesture(event: PointerEvent): void {
     this.activeGesture = null;
     this.draftPolygon.set(null);
     this.canvasEl().nativeElement.releasePointerCapture?.(event.pointerId);
@@ -214,7 +250,7 @@ export class PolygonCanvas {
   }
 
   protected onDeletePolygon(): void {
-    this.editStatus.set('Polygon deleted.');
+    this.announce('Polygon deleted.');
     this.polygonDeleted.emit();
   }
 
@@ -260,15 +296,17 @@ export class PolygonCanvas {
   }
 
   private commitNudge(polygon: Polygon, delta: NormalizedPoint, direction: string): void {
-    const updated = this.controller.nudge(polygon, delta);
-    this.editStatus.set(`Polygon moved ${direction}.`);
-    this.polygonMoved.emit(updated.position);
+    this.announce(`Polygon moved ${direction}.`);
+    this.polygonMoved.emit(this.controller.nextPosition(polygon, delta));
   }
 
   private commitRotate(polygon: Polygon, deltaRadians: number, direction: string): void {
-    const updated = this.controller.rotateByStep(polygon, deltaRadians);
-    this.editStatus.set(`Polygon rotated ${KEYBOARD_ROTATION_STEP_DEGREES}° ${direction}.`);
-    this.polygonRotated.emit(updated.rotationRadians);
+    this.announce(`Polygon rotated ${KEYBOARD_ROTATION_STEP_DEGREES}° ${direction}.`);
+    this.polygonRotated.emit(this.controller.nextRotation(polygon, deltaRadians));
+  }
+
+  private announce(message: string): void {
+    void this.liveAnnouncer.announce(message);
   }
 
   private commitDraw(): void {

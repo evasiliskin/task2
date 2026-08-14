@@ -8,15 +8,6 @@ export function subtractPoints(a: NormalizedPoint, b: NormalizedPoint): Normaliz
   return { x: a.x - b.x, y: a.y - b.y };
 }
 
-export function rotatePoint(point: NormalizedPoint, radians: number): NormalizedPoint {
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  return {
-    x: point.x * cos - point.y * sin,
-    y: point.x * sin + point.y * cos,
-  };
-}
-
 export function rotatePointAspectCorrected(
   point: NormalizedPoint,
   radians: number,

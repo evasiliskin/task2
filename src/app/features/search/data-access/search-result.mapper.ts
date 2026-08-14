@@ -1,6 +1,6 @@
 import { SearchResult } from '../domain/search-result.model';
 import { OpenverseImageDto } from './openverse-image.dto';
-import { assertOpenverseSearchResponse, isImageEntry } from './openverse-response.guard';
+import { assertSearchResponseEnvelope, isImageEntry } from './openverse-response.guard';
 
 export interface MappedSearchPage {
   readonly results: SearchResult[];
@@ -22,7 +22,7 @@ export function mapOpenverseImageToSearchResult(dto: OpenverseImageDto): SearchR
 }
 
 export function mapOpenverseSearchResponse(dto: unknown): MappedSearchPage {
-  assertOpenverseSearchResponse(dto);
+  assertSearchResponseEnvelope(dto);
   return {
     results: dto.results.filter(isImageEntry).map(mapOpenverseImageToSearchResult),
     totalCount: dto.result_count,

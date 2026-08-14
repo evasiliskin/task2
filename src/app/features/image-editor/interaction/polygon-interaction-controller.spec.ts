@@ -109,37 +109,36 @@ describe('PolygonInteractionController', () => {
     });
   });
 
-  describe('nudge', () => {
-    it('should move the polygon position by the given normalized delta, leaving points and rotation unchanged', () => {
+  describe('nextPosition', () => {
+    it('should move the polygon position by the given normalized delta', () => {
       const controller = new PolygonInteractionController();
 
-      const updated = controller.nudge(square, { x: 0.02, y: 0 });
+      const updated = controller.nextPosition(square, { x: 0.02, y: 0 });
 
-      expect(updated.position).toEqual({ x: 0.52, y: 0.5 });
-      expect(updated.points).toBe(square.points);
-      expect(updated.rotationRadians).toBe(square.rotationRadians);
+      expect(updated).toEqual({ x: 0.52, y: 0.5 });
     });
 
     it('should clamp the position, when repeated nudges would leave the image', () => {
       const controller = new PolygonInteractionController();
       let polygon = { ...square, position: { x: 0.02, y: 0.5 } };
 
-      polygon = controller.nudge(polygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 });
-      polygon = controller.nudge(polygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 });
+      polygon = {
+        ...polygon,
+        position: controller.nextPosition(polygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 }),
+      };
+      const position = controller.nextPosition(polygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 });
 
-      expect(polygon.position.x).toBe(0);
+      expect(position.x).toBe(0);
     });
   });
 
-  describe('rotateByStep', () => {
-    it('should add the given radians to the current rotation, leaving position and points unchanged', () => {
+  describe('nextRotation', () => {
+    it('should add the given radians to the current rotation', () => {
       const controller = new PolygonInteractionController();
 
-      const updated = controller.rotateByStep(square, Math.PI / 12);
+      const updated = controller.nextRotation(square, Math.PI / 12);
 
-      expect(updated.rotationRadians).toBeCloseTo(Math.PI / 12, 9);
-      expect(updated.position).toEqual(square.position);
-      expect(updated.points).toBe(square.points);
+      expect(updated).toBeCloseTo(Math.PI / 12, 9);
     });
 
     it('should keep the rotation within one turn, when stepped repeatedly', () => {
@@ -147,7 +146,10 @@ describe('PolygonInteractionController', () => {
       let polygon = square;
 
       for (let i = 0; i < 40; i++) {
-        polygon = controller.rotateByStep(polygon, KEYBOARD_ROTATION_STEP_RADIANS);
+        polygon = {
+          ...polygon,
+          rotationRadians: controller.nextRotation(polygon, KEYBOARD_ROTATION_STEP_RADIANS),
+        };
       }
 
       expect(polygon.rotationRadians).toBeGreaterThanOrEqual(0);

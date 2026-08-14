@@ -1,10 +1,9 @@
 import { SearchPageActions, SearchActions, SearchApiActions } from './search.actions';
 
 describe('search actions', () => {
-  it('should create a Query Typed action carrying the raw query, when queryTyped is dispatched', () => {
-    const action = SearchPageActions.queryTyped({ query: 'cats' });
-    expect(action.type).toBe('[Search Page] Query Typed');
-    expect(action.query).toBe('cats');
+  it('should create a Next Page Requested action, when nextPageRequested is dispatched', () => {
+    const action = SearchPageActions.nextPageRequested();
+    expect(action.type).toBe('[Search Page] Next Page Requested');
   });
 
   it('should create a Search Requested action, when searchRequested is dispatched', () => {

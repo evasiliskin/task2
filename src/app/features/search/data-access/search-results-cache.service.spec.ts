@@ -1,26 +1,42 @@
+import { TestBed } from '@angular/core/testing';
 import {
   SearchResultsCache,
   MAX_CACHE_ENTRIES,
   CACHE_TTL_MS,
 } from './search-results-cache.service';
 import { MappedSearchPage } from './search-result.mapper';
+import { CLOCK } from '@core/time/clock.token';
 
 describe('SearchResultsCache', () => {
   const page: MappedSearchPage = { results: [], totalCount: 0, pageCount: 0 };
 
   it('should return undefined, when the query/page was never cached', () => {
-    const cache = new SearchResultsCache();
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
     expect(cache.get('cats', 1)).toBeUndefined();
   });
 
   it('should return the cached page, when the same query and page are requested', () => {
-    const cache = new SearchResultsCache();
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
     cache.set('cats', 1, page);
     expect(cache.get('cats', 1)).toBe(page);
   });
 
+  it('should treat differently-punctuated queries as distinct entries, when they kebab-case identically', () => {
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
+    const catDogSpace: MappedSearchPage = { results: [], totalCount: 0, pageCount: 0 };
+    const catDogHyphen: MappedSearchPage = { results: [], totalCount: 0, pageCount: 0 };
+    cache.set('cat dog', 1, catDogSpace);
+    cache.set('cat-dog', 1, catDogHyphen);
+    expect(cache.get('cat dog', 1)).toBe(catDogSpace);
+    expect(cache.get('cat-dog', 1)).toBe(catDogHyphen);
+  });
+
   it('should treat different pages of the same query as distinct entries, when caching multiple pages', () => {
-    const cache = new SearchResultsCache();
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
     const pageTwo: MappedSearchPage = { results: [], totalCount: 0, pageCount: 0 };
     cache.set('cats', 1, page);
     cache.set('cats', 2, pageTwo);
@@ -29,7 +45,8 @@ describe('SearchResultsCache', () => {
   });
 
   it('should evict the oldest entry, when the cache exceeds its capacity', () => {
-    const cache = new SearchResultsCache();
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
     for (let i = 0; i < 30; i++) {
       cache.set(`query-${i}`, 1, { results: [], totalCount: 0, pageCount: 0 });
     }
@@ -41,7 +58,8 @@ describe('SearchResultsCache', () => {
   });
 
   it('should evict the least recently READ entry, not the least recently written', () => {
-    const cache = new SearchResultsCache();
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
     for (let i = 0; i < MAX_CACHE_ENTRIES; i++) {
       cache.set(`q${i}`, 1, page);
     }
@@ -55,7 +73,8 @@ describe('SearchResultsCache', () => {
 
   it('should expire an entry once the TTL has elapsed', () => {
     vi.useFakeTimers();
-    const cache = new SearchResultsCache();
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
     cache.set('cats', 1, page);
 
     vi.advanceTimersByTime(CACHE_TTL_MS + 1);
@@ -66,12 +85,24 @@ describe('SearchResultsCache', () => {
 
   it('should still serve an entry just inside the TTL', () => {
     vi.useFakeTimers();
-    const cache = new SearchResultsCache();
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
     cache.set('cats', 1, page);
 
     vi.advanceTimersByTime(CACHE_TTL_MS - 1);
 
     expect(cache.get('cats', 1)).toBe(page);
     vi.useRealTimers();
+  });
+
+  it('should return undefined, when the entry is older than the TTL', () => {
+    let now = 0;
+    TestBed.configureTestingModule({ providers: [{ provide: CLOCK, useValue: () => now }] });
+    const cache = TestBed.inject(SearchResultsCache);
+
+    cache.set('cats', 1, { results: [], totalCount: 0, pageCount: 0 });
+    now = CACHE_TTL_MS;
+
+    expect(cache.get('cats', 1)).toBeUndefined();
   });
 });

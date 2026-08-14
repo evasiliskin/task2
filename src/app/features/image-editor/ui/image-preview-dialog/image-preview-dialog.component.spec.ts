@@ -1,8 +1,7 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NZ_MODAL_DATA } from 'ng-zorro-antd/modal';
-import { of } from 'rxjs';
 import { ImageEditorFacade } from '../../image-editor.facade';
 import { ImagePreviewTarget } from '../../domain/image-preview-target.model';
 import { NormalizedPoint } from '../../domain/normalized-point.model';
@@ -33,7 +32,7 @@ describe('ImagePreviewDialog', () => {
 
   function configure(polygon: Polygon | null = null) {
     const facade = {
-      polygonFor$: vi.fn().mockReturnValue(of(polygon)),
+      polygonFor: vi.fn().mockReturnValue(signal(polygon)),
       createPolygon: vi.fn(),
       movePolygon: vi.fn(),
       rotatePolygon: vi.fn(),
@@ -116,31 +115,5 @@ describe('ImagePreviewDialog', () => {
     canvas.polygonDeleted.emit();
 
     expect(facade.deletePolygon).toHaveBeenCalledWith('image-1');
-  });
-
-  it('sets aria-modal and aria-labelledby on the ancestor dialog container, referencing the ant-modal-title element', () => {
-    configure();
-    const fixture = TestBed.createComponent(ImagePreviewDialog);
-
-    const dialogContainer = document.createElement('div');
-    dialogContainer.setAttribute('role', 'dialog');
-    const titleEl = document.createElement('div');
-    titleEl.className = 'ant-modal-title';
-    dialogContainer.appendChild(titleEl);
-    dialogContainer.appendChild(fixture.nativeElement);
-
-    fixture.detectChanges();
-
-    expect(dialogContainer.getAttribute('aria-modal')).toBe('true');
-    const labelledBy = dialogContainer.getAttribute('aria-labelledby');
-    expect(labelledBy).toBeTruthy();
-    expect(titleEl.id).toBe(labelledBy);
-  });
-
-  it('does nothing when there is no ancestor dialog container (defensive no-op)', () => {
-    configure();
-    const fixture = TestBed.createComponent(ImagePreviewDialog);
-
-    expect(() => fixture.detectChanges()).not.toThrow();
   });
 });

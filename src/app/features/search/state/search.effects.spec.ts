@@ -3,34 +3,32 @@ import { Store } from '@ngrx/store';
 import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { provideMockActions } from '@ngrx/effects/testing';
 import { ReplaySubject, of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { HttpFailure } from '@core/http/http-failure.model';
 import { SearchEffects } from './search.effects';
 import { SearchPageActions, SearchActions, SearchApiActions } from './search.actions';
-import { OpenverseApi } from '../data-access/openverse-api.service';
-import { SearchResultsCache } from '../data-access/search-results-cache.service';
+import { SearchRepository } from '../data-access/search-repository.service';
 import { initialState } from './search.reducer';
 
 describe('SearchEffects', () => {
   let actions$: ReplaySubject<unknown>;
   let effects: SearchEffects;
-  let openverseApi: { searchImages: ReturnType<typeof vi.fn> };
-  let cache: { get: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> };
+  let repository: { search: ReturnType<typeof vi.fn> };
   let store: MockStore;
 
-  const emptyResponse = { result_count: 0, page_count: 1, results: [] };
+  const mappedPage = { results: [], totalCount: 0, pageCount: 1 };
 
   beforeEach(() => {
     vi.useFakeTimers();
     actions$ = new ReplaySubject(1);
-    openverseApi = { searchImages: vi.fn(() => of(emptyResponse)) };
-    cache = { get: vi.fn(() => undefined), set: vi.fn() };
+    repository = { search: vi.fn(() => of(mappedPage)) };
 
     TestBed.configureTestingModule({
       providers: [
         SearchEffects,
         provideMockActions(() => actions$),
         provideMockStore({ initialState: { search: initialState } }),
-        { provide: OpenverseApi, useValue: openverseApi },
-        { provide: SearchResultsCache, useValue: cache },
+        { provide: SearchRepository, useValue: repository },
       ],
     });
 
@@ -42,94 +40,39 @@ describe('SearchEffects', () => {
     vi.useRealTimers();
   });
 
-  it('should ignore non-meaningful queries, when debouncing query typed events', () => {
-    const results: unknown[] = [];
-    effects.debounceQuery$.subscribe((action) => results.push(action));
-
-    actions$.next(SearchPageActions.queryTyped({ query: 'a' }));
-    vi.advanceTimersByTime(300);
-
-    expect(results).toEqual([SearchActions.queryCleared()]);
-  });
-
-  it('should dispatch searchRequested with the normalized query, when the debounced query is meaningful', () => {
-    const results: unknown[] = [];
-    effects.debounceQuery$.subscribe((action) => results.push(action));
-
-    actions$.next(SearchPageActions.queryTyped({ query: '  cats  ' }));
-    vi.advanceTimersByTime(300);
-
-    expect(results).toEqual([SearchActions.searchRequested({ query: 'cats' })]);
-  });
-
-  it('should collapse rapid keystrokes into a single request, when queries are typed within the debounce window', () => {
-    const results: unknown[] = [];
-    effects.debounceQuery$.subscribe((action) => results.push(action));
-
-    actions$.next(SearchPageActions.queryTyped({ query: 'c' }));
-    vi.advanceTimersByTime(100);
-    actions$.next(SearchPageActions.queryTyped({ query: 'ca' }));
-    vi.advanceTimersByTime(100);
-    actions$.next(SearchPageActions.queryTyped({ query: 'cat' }));
-    vi.advanceTimersByTime(300);
-
-    expect(results).toEqual([SearchActions.searchRequested({ query: 'cat' })]);
-  });
-
-  it('should map a successful API response to loadResultsSuccess and cache it, when performSearch$ runs', async () => {
-    openverseApi.searchImages.mockReturnValue(
-      of({
-        result_count: 1,
-        page_count: 1,
-        results: [
-          {
-            id: '1',
-            title: 'One',
-            url: 'u',
-            thumbnail: 't',
-            width: 1,
-            height: 1,
-            creator: null,
-            foreign_landing_url: 'f',
-          },
-        ],
-      }),
-    );
-
-    const emitted = await new Promise((resolve) => {
-      effects.performSearch$.subscribe(resolve);
-      actions$.next(SearchActions.searchRequested({ query: 'cats' }));
-    });
-
-    expect(emitted).toEqual(
-      SearchApiActions.loadResultsSuccess({
-        query: 'cats',
-        page: 1,
-        results: [
-          {
-            id: '1',
-            title: 'One',
-            imageUrl: 'u',
-            thumbnailUrl: 't',
-            width: 1,
-            height: 1,
-            creator: null,
-            sourceUrl: 'f',
-          },
-        ],
-        totalCount: 1,
-        pageCount: 1,
-      }),
-    );
-    expect(cache.set).toHaveBeenCalledWith('cats', 1, {
-      results: expect.any(Array),
+  it('should dispatch loadResultsSuccess with the repository result, when performSearch$ runs', async () => {
+    const page = {
+      results: [
+        {
+          id: '1',
+          title: 'One',
+          imageUrl: 'u',
+          thumbnailUrl: 't',
+          width: 1,
+          height: 1,
+          creator: null,
+          sourceUrl: 'f',
+        },
+      ],
       totalCount: 1,
       pageCount: 1,
+    };
+    repository.search.mockReturnValue(of(page));
+
+    const emitted = await new Promise((resolve) => {
+      effects.performSearch$.subscribe(resolve);
+      actions$.next(SearchActions.searchRequested({ query: 'cats' }));
     });
+
+    expect(repository.search).toHaveBeenCalledWith('cats', 1);
+    expect(emitted).toEqual(
+      SearchApiActions.loadResultsSuccess({ query: 'cats', page: 1, ...page }),
+    );
   });
 
-  it('should map a failed API response to loadResultsFailure, when performSearch$ runs', async () => {
-    openverseApi.searchImages.mockReturnValue(throwError(() => ({ status: 500, message: 'boom' })));
+  it('should dispatch loadResultsFailure, when the repository errors', async () => {
+    const failure = new HttpFailure('server', 500, new HttpErrorResponse({ status: 500 }));
+    repository.search.mockReturnValue(throwError(() => failure));
 
     const emitted = await new Promise((resolve) => {
       effects.performSearch$.subscribe(resolve);
@@ -137,23 +80,8 @@ describe('SearchEffects', () => {
     });
 
     expect(emitted).toEqual(
-      SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }),
+      SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, kind: failure.kind }),
     );
-  });
-
-  it('should serve a cached page without calling the API, when performSearch$ finds a cache hit', async () => {
-    const cachedPage = { results: [], totalCount: 5, pageCount: 1 };
-    cache.get.mockReturnValue(cachedPage);
-
-    const emitted = await new Promise((resolve) => {
-      effects.performSearch$.subscribe(resolve);
-      actions$.next(SearchActions.searchRequested({ query: 'cats' }));
-    });
-
-    expect(emitted).toEqual(
-      SearchApiActions.loadResultsSuccess({ query: 'cats', page: 1, ...cachedPage }),
-    );
-    expect(openverseApi.searchImages).not.toHaveBeenCalled();
   });
 
   it('should be a no-op, when loadNextPage$ runs and there is no next page', () => {
@@ -184,7 +112,7 @@ describe('SearchEffects', () => {
       actions$.next(SearchPageActions.nextPageRequested());
     });
 
-    expect(openverseApi.searchImages).toHaveBeenCalledWith('cats', 2, expect.any(Number));
+    expect(repository.search).toHaveBeenCalledWith('cats', 2);
     expect((emitted as { page: number }).page).toBe(2);
   });
 
@@ -214,7 +142,7 @@ describe('SearchEffects', () => {
 
   it('should re-issue the same query through retry, when a search has failed', () => {
     store.setState({
-      search: { ...initialState, activeQuery: 'cats', status: 'error', error: 'boom' },
+      search: { ...initialState, activeQuery: 'cats', status: 'error', error: 'unknown' },
     });
     const results: unknown[] = [];
     effects.retry$.subscribe((action) => results.push(action));
@@ -222,22 +150,5 @@ describe('SearchEffects', () => {
     actions$.next(SearchActions.retryRequested());
 
     expect(results).toEqual([SearchActions.searchRequested({ query: 'cats' })]);
-  });
-
-  it('should emit a user-safe message, when the API returns a malformed body', async () => {
-    openverseApi.searchImages.mockReturnValue(of({ result_count: 1, page_count: 1 }));
-    const results: unknown[] = [];
-    effects.performSearch$.subscribe((action) => results.push(action));
-
-    actions$.next(SearchActions.searchRequested({ query: 'cats' }));
-    await vi.advanceTimersByTimeAsync(0);
-
-    expect(results).toEqual([
-      SearchApiActions.loadResultsFailure({
-        query: 'cats',
-        page: 1,
-        message: 'The image service returned unexpected data. Please try again.',
-      }),
-    ]);
   });
 });

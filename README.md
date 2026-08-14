@@ -245,6 +245,20 @@ full reasoning behind these decisions. Summary:
   dialog. Everything else audited (alt text, focus trap, keyboard support,
   live regions, labeled input) was already correct and was left untouched.
 
+## Performance & bundle
+
+`ng-zorro-antd/modal/style/index.min.css` stays in the eager `angular.json`
+`styles` array even though `ImagePreviewDialog` is dynamically imported. Ant
+Design's modal styles are global and cannot be scoped to a component without
+`ViewEncapsulation.None`, which would push the stylesheet past the 8 kB
+`anyComponentStyle` production budget. Raising that budget to hide the
+problem is not an option, so the eager load is a deliberate trade-off:
+roughly one stylesheet's worth of initial CSS in exchange for a correct,
+budget-clean build.
+
+`lodash`'s `kebabCase` is used to build the search-results cache key, added at
+explicit user request.
+
 ## Testing strategy
 
 Prioritized per the local (gitignored) `.ai/skills/testing/SKILL.md`:

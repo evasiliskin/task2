@@ -100,14 +100,11 @@ export class PolygonInteractionController {
     };
   }
 
-  nudge(polygon: Polygon, delta: NormalizedPoint): Polygon {
-    return { ...polygon, position: clampPolygonPosition(addPoints(polygon.position, delta)) };
+  nextPosition(polygon: Polygon, delta: NormalizedPoint): NormalizedPoint {
+    return clampPolygonPosition(addPoints(polygon.position, delta));
   }
 
-  rotateByStep(polygon: Polygon, deltaRadians: number): Polygon {
-    return {
-      ...polygon,
-      rotationRadians: normalizeRotation(polygon.rotationRadians + deltaRadians),
-    };
+  nextRotation(polygon: Polygon, deltaRadians: number): number {
+    return normalizeRotation(polygon.rotationRadians + deltaRadians);
   }
 }

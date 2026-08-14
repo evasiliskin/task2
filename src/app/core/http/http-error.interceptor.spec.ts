@@ -6,11 +6,8 @@ import {
   withInterceptors,
 } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import {
-  httpErrorInterceptor,
-  MAX_RETRY_ATTEMPTS,
-  NormalizedHttpError,
-} from './http-error.interceptor';
+import { httpErrorInterceptor, MAX_RETRY_ATTEMPTS } from './http-error.interceptor';
+import { HttpFailure } from './http-failure.model';
 
 describe('httpErrorInterceptor', () => {
   let http: HttpClient;
@@ -29,11 +26,11 @@ describe('httpErrorInterceptor', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('should normalize a server error into a user-safe message, when the request returns a 500', async () => {
+  it('should normalize a server error into an HttpFailure, when the request returns a 500', async () => {
     vi.useFakeTimers();
-    let captured: NormalizedHttpError | undefined;
+    let captured: HttpFailure | undefined;
 
-    http.get('/test').subscribe({ error: (error: NormalizedHttpError) => (captured = error) });
+    http.get('/test').subscribe({ error: (error: HttpFailure) => (captured = error) });
 
     for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
       httpMock
@@ -42,16 +39,17 @@ describe('httpErrorInterceptor', () => {
       await vi.advanceTimersByTimeAsync(5000);
     }
 
+    expect(captured).toBeInstanceOf(HttpFailure);
     expect(captured?.status).toBe(500);
-    expect(captured?.message).toBe('The request could not be completed. Please try again.');
+    expect(captured?.kind).toBe('server');
     vi.useRealTimers();
   });
 
   it('should normalize a network error, when the request fails with status 0', async () => {
     vi.useFakeTimers();
-    let captured: NormalizedHttpError | undefined;
+    let captured: HttpFailure | undefined;
 
-    http.get('/test').subscribe({ error: (error: NormalizedHttpError) => (captured = error) });
+    http.get('/test').subscribe({ error: (error: HttpFailure) => (captured = error) });
 
     for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
       httpMock
@@ -60,8 +58,9 @@ describe('httpErrorInterceptor', () => {
       await vi.advanceTimersByTimeAsync(5000);
     }
 
+    expect(captured).toBeInstanceOf(HttpFailure);
     expect(captured?.status).toBe(0);
-    expect(captured?.message).toContain('Network error');
+    expect(captured?.kind).toBe('offline');
     vi.useRealTimers();
   });
 
@@ -80,26 +79,41 @@ describe('httpErrorInterceptor', () => {
 
   it('should give up after the maximum attempts, when a 503 keeps failing', async () => {
     vi.useFakeTimers();
-    let captured: NormalizedHttpError | undefined;
-    http.get('/test').subscribe({ error: (error: NormalizedHttpError) => (captured = error) });
+    let captured: HttpFailure | undefined;
+    http.get('/test').subscribe({ error: (error: HttpFailure) => (captured = error) });
 
     for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
       httpMock.expectOne('/test').flush('down', { status: 503, statusText: 'Unavailable' });
       await vi.advanceTimersByTimeAsync(5000);
     }
 
+    expect(captured).toBeInstanceOf(HttpFailure);
     expect(captured?.status).toBe(503);
     vi.useRealTimers();
   });
 
   it('should not retry a 404, and should preserve the original response as the cause', () => {
-    let captured: NormalizedHttpError | undefined;
-    http.get('/test').subscribe({ error: (error: NormalizedHttpError) => (captured = error) });
+    let captured: HttpFailure | undefined;
+    http.get('/test').subscribe({ error: (error: HttpFailure) => (captured = error) });
 
     httpMock.expectOne('/test').flush('missing', { status: 404, statusText: 'Not Found' });
 
+    expect(captured).toBeInstanceOf(HttpFailure);
     expect(captured?.status).toBe(404);
+    expect(captured?.kind).toBe('client');
     expect(captured?.cause).toBeInstanceOf(HttpErrorResponse);
     expect(captured?.cause.status).toBe(404);
+  });
+
+  it('should not retry, when the failing request is a POST', () => {
+    const httpClient = TestBed.inject(HttpClient);
+    const controller = TestBed.inject(HttpTestingController);
+    let caught: unknown;
+
+    httpClient.post('/anything', {}).subscribe({ error: (error: unknown) => (caught = error) });
+    controller.expectOne('/anything').flush(null, { status: 503, statusText: 'Unavailable' });
+
+    controller.verify();
+    expect(caught).toBeInstanceOf(HttpFailure);
   });
 });

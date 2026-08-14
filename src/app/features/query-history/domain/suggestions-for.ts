@@ -1,4 +1,4 @@
-import { toCanonicalQuery } from '../../search/domain/to-canonical-query';
+import { toCanonicalQuery } from '@shared/search-query';
 import { QueryHistoryEntry } from './query-history-entry.model';
 
 const DEFAULT_SUGGESTION_LIMIT = 5;

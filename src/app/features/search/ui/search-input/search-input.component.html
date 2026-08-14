@@ -7,8 +7,8 @@
     autocomplete="off"
     placeholder='Try "mountains" or "cats"'
     [nzAutocomplete]="auto"
-    [ngModel]="queryText()"
-    (ngModelChange)="onQueryChange($event)"
+    [ngModel]="query()"
+    (ngModelChange)="queryChange.emit($event)"
   />
   <nz-autocomplete #auto>
     @for (suggestion of suggestions(); track suggestion) {

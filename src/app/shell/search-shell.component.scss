@@ -5,15 +5,15 @@
   min-height: 0;
 }
 
-.search-page {
+.search-shell {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.search-page__loading,
-.search-page__idle {
+.search-shell__loading,
+.search-shell__idle {
   display: flex;
   align-items: center;
   gap: 12px;

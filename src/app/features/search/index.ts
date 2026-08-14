@@ -1,0 +1,12 @@
+export { SearchFacade } from './search.facade';
+export { type SearchResult } from './domain/search-result.model';
+export { SEARCH_RESULT_ROW_HEIGHT_PX, shouldLoadNextPage } from './domain/should-load-next-page';
+export { type NextPageTriggerState } from './domain/should-load-next-page';
+export { SearchActions, SearchApiActions, SearchPageActions } from './state/search.actions';
+export { SearchEffects } from './state/search.effects';
+export { searchFeature, type SearchStatus, type SearchViewModel } from './state/search.reducer';
+export { SearchEmptyState } from './ui/search-empty-state/search-empty-state.component';
+export { SearchErrorState } from './ui/search-error-state/search-error-state.component';
+export { SearchInput } from './ui/search-input/search-input.component';
+export { SearchResultsList } from './ui/search-results-list/search-results-list.component';
+export { type VisibleRange } from './ui/search-results-list/search-results-list.component';

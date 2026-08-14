@@ -16,84 +16,27 @@ function makeResults(count: number): SearchResult[] {
 }
 
 describe('SearchResultsList', () => {
-  it('emits nextPageRequested when the rendered index nears the end and more results are available', () => {
+  it('emits scrolled with the first visible index and the visible row count', () => {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(20));
-    fixture.componentRef.setInput('hasMoreResults', true);
     fixture.componentRef.setInput('isLoadingMore', false);
     fixture.detectChanges();
 
-    const nextPageSpy = vi.fn();
-    fixture.componentInstance.nextPageRequested.subscribe(nextPageSpy);
+    const scrolledSpy = vi.fn();
+    fixture.componentInstance.scrolled.subscribe(scrolledSpy);
 
     (
       fixture.componentInstance as unknown as { onScrolledIndexChange(i: number): void }
     ).onScrolledIndexChange(15);
 
-    expect(nextPageSpy).toHaveBeenCalled();
-  });
-
-  it('does not emit nextPageRequested when there are no more results', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(20));
-    fixture.componentRef.setInput('hasMoreResults', false);
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.detectChanges();
-
-    const nextPageSpy = vi.fn();
-    fixture.componentInstance.nextPageRequested.subscribe(nextPageSpy);
-
-    (
-      fixture.componentInstance as unknown as { onScrolledIndexChange(i: number): void }
-    ).onScrolledIndexChange(15);
-
-    expect(nextPageSpy).not.toHaveBeenCalled();
-  });
-
-  it('does not emit nextPageRequested while a page is already loading', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(20));
-    fixture.componentRef.setInput('hasMoreResults', true);
-    fixture.componentRef.setInput('isLoadingMore', true);
-    fixture.detectChanges();
-
-    const nextPageSpy = vi.fn();
-    fixture.componentInstance.nextPageRequested.subscribe(nextPageSpy);
-
-    (
-      fixture.componentInstance as unknown as { onScrolledIndexChange(i: number): void }
-    ).onScrolledIndexChange(15);
-
-    expect(nextPageSpy).not.toHaveBeenCalled();
-  });
-
-  it('does not emit nextPageRequested while a load-more failure is showing (recovery goes through retry)', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(20));
-    fixture.componentRef.setInput('hasMoreResults', true);
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.componentRef.setInput('isLoadingMoreError', true);
-    fixture.detectChanges();
-
-    const nextPageSpy = vi.fn();
-    fixture.componentInstance.nextPageRequested.subscribe(nextPageSpy);
-
-    (
-      fixture.componentInstance as unknown as { onScrolledIndexChange(i: number): void }
-    ).onScrolledIndexChange(15);
-
-    expect(nextPageSpy).not.toHaveBeenCalled();
+    expect(scrolledSpy).toHaveBeenCalledWith(expect.objectContaining({ firstVisibleIndex: 15 }));
   });
 
   it('renders the inline retry block when isLoadingMoreError is true', () => {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('hasMoreResults', true);
     fixture.componentRef.setInput('isLoadingMore', false);
     fixture.componentRef.setInput('isLoadingMoreError', true);
     fixture.detectChanges();
@@ -110,7 +53,6 @@ describe('SearchResultsList', () => {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('hasMoreResults', true);
     fixture.componentRef.setInput('isLoadingMore', false);
     fixture.componentRef.setInput('isLoadingMoreError', true);
     fixture.detectChanges();
@@ -124,7 +66,6 @@ describe('SearchResultsList', () => {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('hasMoreResults', true);
     fixture.componentRef.setInput('isLoadingMore', false);
     fixture.componentRef.setInput('isLoadingMoreError', true);
     fixture.detectChanges();
@@ -143,7 +84,6 @@ describe('SearchResultsList', () => {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('hasMoreResults', true);
     fixture.componentRef.setInput('isLoadingMore', false);
     fixture.detectChanges();
 
@@ -155,7 +95,6 @@ describe('SearchResultsList', () => {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('hasMoreResults', true);
     fixture.componentRef.setInput('isLoadingMore', false);
     fixture.componentRef.setInput('isLoadingMoreError', true);
     fixture.detectChanges();
@@ -167,7 +106,6 @@ describe('SearchResultsList', () => {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('hasMoreResults', true);
     fixture.componentRef.setInput('isLoadingMore', true);
     fixture.detectChanges();
 
@@ -175,11 +113,10 @@ describe('SearchResultsList', () => {
     expect(loadingBlock.getAttribute('aria-live')).toBe('polite');
   });
 
-  it('emits nextPageRequested at the bottom of a tall viewport, where the first-visible index alone would not', () => {
+  it('emits scrolled with a visible row count derived from the viewport size', () => {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(100));
-    fixture.componentRef.setInput('hasMoreResults', true);
     fixture.componentRef.setInput('isLoadingMore', false);
     fixture.detectChanges();
 
@@ -189,12 +126,12 @@ describe('SearchResultsList', () => {
     };
     Object.defineProperty(instance, 'viewport', { value: () => ({ getViewportSize: () => 1152 }) });
 
-    const nextPageSpy = vi.fn();
-    fixture.componentInstance.nextPageRequested.subscribe(nextPageSpy);
+    const scrolledSpy = vi.fn();
+    fixture.componentInstance.scrolled.subscribe(scrolledSpy);
 
     instance.onScrolledIndexChange(88);
 
-    expect(nextPageSpy).toHaveBeenCalled();
+    expect(scrolledSpy).toHaveBeenCalledWith({ firstVisibleIndex: 88, visibleRowCount: 12 });
   });
 
   it('exposes the results as a list for assistive technology', async () => {

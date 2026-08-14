@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { OpenverseApi } from './openverse-api.service';
-import { OPENVERSE_API_CONFIG } from '../../../core/api/openverse/openverse-api.config';
+import { OPENVERSE_API_CONFIG } from '@core/api/openverse/openverse-api.config';
 import { OpenverseSearchResponseDto } from './openverse-image.dto';
 
 describe('OpenverseApi', () => {

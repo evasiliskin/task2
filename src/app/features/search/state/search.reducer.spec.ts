@@ -91,11 +91,11 @@ describe('search reducer', () => {
     const loadingState = { ...activeCatsState, status: 'loading' as const };
     const state = reducer(
       loadingState,
-      SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }),
+      SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, kind: 'unknown' }),
     );
 
     expect(state.status).toBe('error');
-    expect(state.error).toBe('boom');
+    expect(state.error).toBe('unknown');
   });
 
   it('should ignore a stale failure, when nobody is waiting on the request anymore', () => {
@@ -106,7 +106,7 @@ describe('search reducer', () => {
     };
     const state = reducer(
       successState,
-      SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }),
+      SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, kind: 'unknown' }),
     );
 
     expect(state).toBe(successState);
@@ -123,11 +123,11 @@ describe('search reducer', () => {
 
     const state = reducer(
       loadingMoreState,
-      SearchApiActions.loadResultsFailure({ query: 'cats', page: 2, message: 'boom' }),
+      SearchApiActions.loadResultsFailure({ query: 'cats', page: 2, kind: 'unknown' }),
     );
 
     expect(state.status).toBe('loadingMoreError');
-    expect(state.error).toBe('boom');
+    expect(state.error).toBe('unknown');
     expect(state.ids).toEqual(['1']);
   });
 
@@ -203,7 +203,7 @@ describe('search reducer', () => {
       ...activeCatsState,
       ...searchResultsAdapter.setAll([makeResult('1')], activeCatsState),
       status: 'loadingMoreError' as const,
-      error: 'boom',
+      error: 'unknown' as const,
       page: 1,
       pageCount: 3,
     };
@@ -234,7 +234,7 @@ describe('search reducer', () => {
     it('should ignore a failure for a query that is no longer active', () => {
       const next = searchFeature.reducer(
         loadingState,
-        SearchApiActions.loadResultsFailure({ query: 'cat', page: 2, message: 'boom' }),
+        SearchApiActions.loadResultsFailure({ query: 'cat', page: 2, kind: 'unknown' }),
       );
 
       expect(next.status).toBe('loading');
@@ -244,27 +244,27 @@ describe('search reducer', () => {
     it('should apply a failure for page 1 of the active query while loading', () => {
       const next = searchFeature.reducer(
         loadingState,
-        SearchApiActions.loadResultsFailure({ query: 'dog', page: 1, message: 'boom' }),
+        SearchApiActions.loadResultsFailure({ query: 'dog', page: 1, kind: 'unknown' }),
       );
 
       expect(next.status).toBe('error');
-      expect(next.error).toBe('boom');
+      expect(next.error).toBe('unknown');
     });
 
     it('should apply a failure for the next page of the active query while loading more', () => {
       const next = searchFeature.reducer(
         { ...initialState, activeQuery: 'dog', status: 'loadingMore', page: 1, pageCount: 3 },
-        SearchApiActions.loadResultsFailure({ query: 'dog', page: 2, message: 'boom' }),
+        SearchApiActions.loadResultsFailure({ query: 'dog', page: 2, kind: 'unknown' }),
       );
 
       expect(next.status).toBe('loadingMoreError');
-      expect(next.error).toBe('boom');
+      expect(next.error).toBe('unknown');
     });
 
     it('should ignore a failure for a page other than the one being awaited', () => {
       const next = searchFeature.reducer(
         { ...initialState, activeQuery: 'dog', status: 'loadingMore', page: 1, pageCount: 5 },
-        SearchApiActions.loadResultsFailure({ query: 'dog', page: 4, message: 'boom' }),
+        SearchApiActions.loadResultsFailure({ query: 'dog', page: 4, kind: 'unknown' }),
       );
 
       expect(next.status).toBe('loadingMore');
@@ -326,5 +326,20 @@ describe('search selectors', () => {
       isLoadingMoreError: false,
     });
     expect(state.pageCount).toBe(3);
+  });
+
+  it('should not carry a totalCount field, when results are loaded', () => {
+    const state = searchFeature.reducer(
+      { ...initialState, activeQuery: 'cats', status: 'loading' },
+      SearchApiActions.loadResultsSuccess({
+        query: 'cats',
+        page: 1,
+        results: [],
+        totalCount: 12,
+        pageCount: 2,
+      }),
+    );
+
+    expect(Object.keys(state)).not.toContain('totalCount');
   });
 });

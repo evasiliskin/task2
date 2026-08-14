@@ -1,5 +1,5 @@
 import {
-  assertOpenverseSearchResponse,
+  assertSearchResponseEnvelope,
   InvalidApiResponseError,
   isImageEntry,
 } from './openverse-response.guard';
@@ -21,42 +21,42 @@ const valid = {
   ],
 };
 
-describe('assertOpenverseSearchResponse', () => {
+describe('assertSearchResponseEnvelope', () => {
   it('should accept a well-formed response', () => {
-    expect(() => assertOpenverseSearchResponse(valid)).not.toThrow();
+    expect(() => assertSearchResponseEnvelope(valid)).not.toThrow();
   });
 
   it('should accept an empty result set', () => {
     expect(() =>
-      assertOpenverseSearchResponse({ result_count: 0, page_count: 0, results: [] }),
+      assertSearchResponseEnvelope({ result_count: 0, page_count: 0, results: [] }),
     ).not.toThrow();
   });
 
   it('should reject a null body', () => {
-    expect(() => assertOpenverseSearchResponse(null)).toThrow(InvalidApiResponseError);
+    expect(() => assertSearchResponseEnvelope(null)).toThrow(InvalidApiResponseError);
   });
 
   it('should reject a body whose results are not an array', () => {
-    expect(() => assertOpenverseSearchResponse({ ...valid, results: 'nope' })).toThrow(
+    expect(() => assertSearchResponseEnvelope({ ...valid, results: 'nope' })).toThrow(
       InvalidApiResponseError,
     );
   });
 
   it('should reject a body with a non-numeric page_count', () => {
-    expect(() => assertOpenverseSearchResponse({ ...valid, page_count: 'two' })).toThrow(
+    expect(() => assertSearchResponseEnvelope({ ...valid, page_count: 'two' })).toThrow(
       InvalidApiResponseError,
     );
   });
 
   it("should not reject a malformed result entry, since per-entry validation is not the envelope guard's job", () => {
     expect(() =>
-      assertOpenverseSearchResponse({ ...valid, results: [{ ...valid.results[0], id: 7 }] }),
+      assertSearchResponseEnvelope({ ...valid, results: [{ ...valid.results[0], id: 7 }] }),
     ).not.toThrow();
   });
 
   it('should carry a machine-readable reason', () => {
     try {
-      assertOpenverseSearchResponse({ ...valid, results: 'nope' });
+      assertSearchResponseEnvelope({ ...valid, results: 'nope' });
       expect.unreachable('should have thrown');
     } catch (error) {
       expect((error as InvalidApiResponseError).reason).toBe('results-not-an-array');

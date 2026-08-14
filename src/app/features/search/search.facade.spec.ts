@@ -1,39 +1,51 @@
 import { TestBed } from '@angular/core/testing';
-import { Store } from '@ngrx/store';
-import { of } from 'rxjs';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { provideMockStore, MockStore } from '@ngrx/store/testing';
+import { SearchActions } from './state/search.actions';
+import { initialState, searchFeature } from './state/search.reducer';
 import { SearchFacade } from './search.facade';
-import { SearchActions, SearchPageActions } from './state/search.actions';
+import { SEARCH_DEBOUNCE_MS } from './domain/search-debounce';
 
 describe('SearchFacade', () => {
+  let store: MockStore;
   let facade: SearchFacade;
-  let dispatchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    dispatchSpy = vi.fn();
+    vi.useFakeTimers();
     TestBed.configureTestingModule({
       providers: [
-        SearchFacade,
-        {
-          provide: Store,
-          useValue: { select: () => of(null), dispatch: dispatchSpy },
-        },
+        provideZonelessChangeDetection(),
+        provideMockStore({ initialState: { [searchFeature.name]: initialState } }),
       ],
     });
+    store = TestBed.inject(MockStore);
+    vi.spyOn(store, 'dispatch');
     facade = TestBed.inject(SearchFacade);
   });
 
-  it('should dispatch queryTyped with the raw query, when search() is called', () => {
-    facade.search('cats');
-    expect(dispatchSpy).toHaveBeenCalledWith(SearchPageActions.queryTyped({ query: 'cats' }));
+  afterEach(() => vi.useRealTimers());
+
+  it('should dispatch one search, when several keystrokes arrive inside the debounce window', () => {
+    facade.queryChanged('c');
+    facade.queryChanged('ca');
+    facade.queryChanged('cat');
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+
+    expect(store.dispatch).toHaveBeenCalledTimes(1);
+    expect(store.dispatch).toHaveBeenCalledWith(SearchActions.searchRequested({ query: 'cat' }));
   });
 
-  it('should dispatch nextPageRequested, when loadNextPage() is called', () => {
-    facade.loadNextPage();
-    expect(dispatchSpy).toHaveBeenCalledWith(SearchPageActions.nextPageRequested());
+  it('should dispatch queryCleared, when the debounced query is not meaningful', () => {
+    facade.queryChanged('c');
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+
+    expect(store.dispatch).toHaveBeenCalledWith(SearchActions.queryCleared());
   });
 
-  it('should dispatch retryRequested, when retry() is called', () => {
-    facade.retry();
-    expect(dispatchSpy).toHaveBeenCalledWith(SearchActions.retryRequested());
+  it('should dispatch nothing, when the debounce window has not elapsed', () => {
+    facade.queryChanged('cat');
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 1);
+
+    expect(store.dispatch).not.toHaveBeenCalled();
   });
 });

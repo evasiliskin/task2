@@ -1,5 +1,6 @@
 import { Polygon } from '../polygon.model';
-import { getWorldPoints } from './get-world-points';
+import { getWorldPoints, toWorldPoints } from './get-world-points';
+import { toWorldPoint } from './to-world-point';
 
 describe('getWorldPoints', () => {
   it('should return points offset by position, when rotation is zero', () => {
@@ -50,5 +51,23 @@ describe('getWorldPoints', () => {
 
     expect(result.x).toBeCloseTo(5, 9);
     expect(result.y).toBeCloseTo(7, 9);
+  });
+
+  it('should match per-point conversion, when a rotated polygon is converted in bulk', () => {
+    const polygon: Polygon = {
+      id: 'image-1',
+      imageId: 'image-1',
+      points: [
+        { x: -0.1, y: -0.1 },
+        { x: 0.1, y: -0.1 },
+        { x: 0, y: 0.1 },
+      ],
+      position: { x: 0.5, y: 0.5 },
+      rotationRadians: Math.PI / 3,
+    };
+
+    expect(toWorldPoints(polygon.points, polygon, 1.5)).toEqual(
+      polygon.points.map((point) => toWorldPoint(point, polygon, 1.5)),
+    );
   });
 });

@@ -3,17 +3,16 @@ import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore, Store } from '@ngrx/store';
 import { firstValueFrom } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
-import { SearchApiActions } from '../../search/state/search.actions';
-import { QueryHistoryFacade } from '../query-history.facade';
-import { QueryHistoryEffects } from './query-history.effects';
-import { queryHistoryFeature, selectQueryHistoryEntries } from './query-history.reducer';
+import { SearchApiActions } from '@search';
+import { QueryHistoryFacade, queryHistoryFeature } from '@query-history';
+import { QueryHistoryRecordingEffects } from './query-history-recording.effects';
 
 function configure() {
   TestBed.configureTestingModule({
     providers: [
       provideStore(),
       provideState(queryHistoryFeature),
-      provideEffects(QueryHistoryEffects),
+      provideEffects(QueryHistoryRecordingEffects),
     ],
   });
 
@@ -38,7 +37,7 @@ describe('query-history state integration (real store + real reducer + real effe
     );
 
     await firstValueFrom(
-      store.select(selectQueryHistoryEntries).pipe(
+      store.select(queryHistoryFeature.selectAll).pipe(
         filter((entries) => entries.length > 0),
         take(1),
       ),
@@ -86,7 +85,7 @@ describe('query-history state integration (real store + real reducer + real effe
     );
 
     await firstValueFrom(
-      store.select(selectQueryHistoryEntries).pipe(
+      store.select(queryHistoryFeature.selectAll).pipe(
         filter((entries) => entries.some((entry) => entry.query === 'sentinel')),
         take(1),
       ),
@@ -118,7 +117,7 @@ describe('query-history state integration (real store + real reducer + real effe
     );
 
     await firstValueFrom(
-      store.select(selectQueryHistoryEntries).pipe(
+      store.select(queryHistoryFeature.selectAll).pipe(
         filter((entries) => entries.some((entry) => entry.query === 'cats')),
         take(1),
       ),
