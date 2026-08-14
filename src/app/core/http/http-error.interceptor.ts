@@ -25,6 +25,15 @@ function messageFor(status: number): string {
   return 'The request could not be completed. Please try again.';
 }
 
+export function isNormalizedHttpError(value: unknown): value is NormalizedHttpError {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { message?: unknown }).message === 'string' &&
+    typeof (value as { status?: unknown }).status === 'number'
+  );
+}
+
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) =>
   next(req).pipe(
     retry({

@@ -15,8 +15,9 @@ import {
   withLatestFrom,
 } from 'rxjs/operators';
 import { SEARCH_RESULTS_PAGE_SIZE } from '../../../core/api/openverse/openverse-api.config';
-import { NormalizedHttpError } from '../../../core/http/http-error.interceptor';
+import { isNormalizedHttpError } from '../../../core/http/http-error.interceptor';
 import { OpenverseApi } from '../data-access/openverse-api.service';
+import { InvalidApiResponseError } from '../data-access/openverse-response.guard';
 import { mapOpenverseSearchResponse } from '../data-access/search-result.mapper';
 import { SearchResultsCache } from '../data-access/search-results-cache.service';
 import { isMeaningfulQuery } from '../domain/is-meaningful-query';
@@ -94,9 +95,25 @@ export class SearchEffects {
       map(mapOpenverseSearchResponse),
       tap((mapped) => this.cache.set(query, page, mapped)),
       map((mapped) => SearchApiActions.loadResultsSuccess({ query, page, ...mapped })),
-      catchError((error: NormalizedHttpError) =>
-        of(SearchApiActions.loadResultsFailure({ query, page, message: error.message })),
+      catchError((error: unknown) =>
+        of(
+          SearchApiActions.loadResultsFailure({
+            query,
+            page,
+            message: this.toFailureMessage(error),
+          }),
+        ),
       ),
     );
+  }
+
+  private toFailureMessage(error: unknown): string {
+    if (error instanceof InvalidApiResponseError) {
+      return 'The image service returned unexpected data. Please try again.';
+    }
+    if (isNormalizedHttpError(error)) {
+      return error.message;
+    }
+    return 'Something went wrong. Please try again.';
   }
 }

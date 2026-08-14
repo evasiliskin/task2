@@ -3,6 +3,7 @@ import {
   mapOpenverseSearchResponse,
 } from './search-result.mapper';
 import { OpenverseImageDto, OpenverseSearchResponseDto } from './openverse-image.dto';
+import { InvalidApiResponseError } from './openverse-response.guard';
 
 describe('mapOpenverseImageToSearchResult', () => {
   const baseDto: OpenverseImageDto = {
@@ -66,5 +67,11 @@ describe('mapOpenverseSearchResponse', () => {
     expect(mapped.pageCount).toBe(12);
     expect(mapped.results).toHaveLength(1);
     expect(mapped.results[0].id).toBe('1');
+  });
+
+  it('should throw InvalidApiResponseError, when the response body is malformed', () => {
+    expect(() => mapOpenverseSearchResponse({ result_count: 1, page_count: 1 })).toThrow(
+      InvalidApiResponseError,
+    );
   });
 });

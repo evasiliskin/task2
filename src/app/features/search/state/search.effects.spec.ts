@@ -209,4 +209,21 @@ describe('SearchEffects', () => {
 
     expect(emitted).toEqual(SearchPageActions.nextPageRequested());
   });
+
+  it('should emit a user-safe message, when the API returns a malformed body', async () => {
+    openverseApi.searchImages.mockReturnValue(of({ result_count: 1, page_count: 1 }));
+    const results: unknown[] = [];
+    effects.performSearch$.subscribe((action) => results.push(action));
+
+    actions$.next(SearchActions.searchRequested({ query: 'cats' }));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(results).toEqual([
+      SearchApiActions.loadResultsFailure({
+        query: 'cats',
+        page: 1,
+        message: 'The image service returned unexpected data. Please try again.',
+      }),
+    ]);
+  });
 });
