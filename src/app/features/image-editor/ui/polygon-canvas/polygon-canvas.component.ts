@@ -49,6 +49,8 @@ const KEYBOARD_ROTATION_STEP_DEGREES = Math.round((KEYBOARD_ROTATION_STEP_RADIAN
 export class PolygonCanvas {
   readonly imageUrl = input.required<string>();
   readonly imageAlt = input.required<string>();
+  readonly imageWidth = input(0);
+  readonly imageHeight = input(0);
   readonly polygon = input<Polygon | null>(null);
 
   readonly polygonDrawn = output<readonly NormalizedPoint[]>();
@@ -62,6 +64,7 @@ export class PolygonCanvas {
   protected readonly displayPolygon = computed(() => this.draftPolygon() ?? this.polygon());
   protected readonly editStatus = signal('');
   protected readonly canvasUnavailable = signal(false);
+  protected readonly imageStatus = signal<'loading' | 'loaded' | 'error'>('loading');
   protected readonly editorAriaLabel =
     'Polygon editor. Use arrow keys to move, [ and ] to rotate, Delete to remove.';
 
@@ -195,6 +198,14 @@ export class PolygonCanvas {
 
   protected onCancelDraw(): void {
     this.drawPoints.set([]);
+  }
+
+  protected onImageLoad(): void {
+    this.imageStatus.set('loaded');
+  }
+
+  protected onImageError(): void {
+    this.imageStatus.set('error');
   }
 
   protected onDeletePolygon(): void {

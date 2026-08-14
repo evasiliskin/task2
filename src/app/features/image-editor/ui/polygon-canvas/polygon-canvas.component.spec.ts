@@ -55,6 +55,10 @@ describe('PolygonCanvas', () => {
     fixture.detectChanges();
 
     canvas = fixture.nativeElement.querySelector('canvas');
+
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
+    img.dispatchEvent(new Event('load'));
+    fixture.detectChanges();
   });
 
   afterEach(() => {
@@ -365,5 +369,32 @@ describe('PolygonCanvas', () => {
 
   it('should not render the edit controls, when no polygon exists', () => {
     expect(fixture.nativeElement.querySelector('.polygon-canvas__edit-controls')).toBeNull();
+  });
+
+  it('should render intrinsic width and height attributes, when the image dimensions are known', () => {
+    fixture.componentRef.setInput('imageWidth', 1600);
+    fixture.componentRef.setInput('imageHeight', 900);
+    fixture.detectChanges();
+
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
+    expect(img.getAttribute('width')).toBe('1600');
+    expect(img.getAttribute('height')).toBe('900');
+  });
+
+  it('should show an error message and hide the draw controls, when the image fails to load', () => {
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
+    img.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('The image could not be loaded');
+    expect(fixture.nativeElement.querySelector('.polygon-canvas__draw-controls')).toBeNull();
+  });
+
+  it('should clear the loading state, when the image loads', () => {
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
+    img.dispatchEvent(new Event('load'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Loading image');
   });
 });

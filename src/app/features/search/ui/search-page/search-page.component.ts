@@ -51,6 +51,8 @@ export class SearchPage {
       imageId: result.id,
       imageUrl: result.imageUrl,
       title: result.title,
+      width: result.width,
+      height: result.height,
     });
   }
 }

@@ -65,4 +65,14 @@
     font-size: 13px;
     color: var(--app-color-error);
   }
+
+  &__image-status {
+    margin: 0;
+    font-size: 13px;
+    color: var(--app-color-text-secondary);
+
+    &--error {
+      color: #cf1322;
+    }
+  }
 }

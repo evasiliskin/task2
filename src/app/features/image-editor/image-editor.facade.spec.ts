@@ -84,6 +84,8 @@ describe('ImageEditorFacade', () => {
       imageId: 'image-1',
       imageUrl: 'https://example.test/full.jpg',
       title: 'A mountain',
+      width: 1600,
+      height: 900,
     };
 
     await facade.open(target);
@@ -117,6 +119,8 @@ describe('ImageEditorFacade', () => {
       imageId: 'image-1',
       imageUrl: 'https://example.test/full.jpg',
       title: 'A mountain',
+      width: 1600,
+      height: 900,
     };
     await facade.open(target);
 

@@ -185,6 +185,8 @@ describe('SearchPage', () => {
       imageId: '1',
       imageUrl: 'https://x/full.jpg',
       title: 'A cat',
+      width: 0,
+      height: 0,
     });
   });
 });

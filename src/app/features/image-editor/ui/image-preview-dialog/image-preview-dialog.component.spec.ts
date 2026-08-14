@@ -13,6 +13,8 @@ import { ImagePreviewDialog } from './image-preview-dialog.component';
 class FakePolygonCanvas {
   readonly imageUrl = input.required<string>();
   readonly imageAlt = input.required<string>();
+  readonly imageWidth = input(0);
+  readonly imageHeight = input(0);
   readonly polygon = input<Polygon | null>(null);
   readonly polygonDrawn = output<readonly NormalizedPoint[]>();
   readonly polygonMoved = output<NormalizedPoint>();
@@ -25,6 +27,8 @@ describe('ImagePreviewDialog', () => {
     imageId: 'image-1',
     imageUrl: 'https://example.test/full.jpg',
     title: 'A mountain',
+    width: 1600,
+    height: 900,
   };
 
   function configure(polygon: Polygon | null = null) {

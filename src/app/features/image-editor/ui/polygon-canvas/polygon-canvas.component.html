@@ -1,6 +1,15 @@
 <div class="polygon-canvas">
   <div class="polygon-canvas__stage">
-    <img #imageEl class="polygon-canvas__image" [src]="imageUrl()" [alt]="imageAlt()" />
+    <img
+      #imageEl
+      class="polygon-canvas__image"
+      [src]="imageUrl()"
+      [alt]="imageAlt()"
+      [attr.width]="imageWidth() || null"
+      [attr.height]="imageHeight() || null"
+      (load)="onImageLoad()"
+      (error)="onImageError()"
+    />
     <canvas
       #canvasEl
       class="polygon-canvas__overlay"
@@ -16,6 +25,14 @@
     ></canvas>
   </div>
 
+  @if (imageStatus() === 'loading') {
+    <p class="polygon-canvas__image-status" role="status" aria-live="polite">Loading image…</p>
+  } @else if (imageStatus() === 'error') {
+    <p class="polygon-canvas__image-status polygon-canvas__image-status--error" role="alert">
+      The image could not be loaded, so polygons cannot be drawn on it.
+    </p>
+  }
+
   @if (canvasUnavailable()) {
     <p class="polygon-canvas__unavailable" role="alert">
       Polygon drawing is unavailable — this browser did not provide a 2D canvas context.
@@ -26,7 +43,7 @@
     {{ editStatus() }}
   </span>
 
-  @if (!polygon()) {
+  @if (!polygon() && imageStatus() === 'loaded') {
     <div class="polygon-canvas__draw-controls">
       <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
         @if (drawPoints().length === 0) {
@@ -57,7 +74,7 @@
     </div>
   }
 
-  @if (polygon()) {
+  @if (polygon() && imageStatus() === 'loaded') {
     <div class="polygon-canvas__edit-controls">
       <span class="polygon-canvas__draw-hint">
         Drag the polygon to move it, drag the handle to rotate it.
