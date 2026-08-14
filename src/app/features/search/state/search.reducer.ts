@@ -135,7 +135,6 @@ export const {
   selectStatus,
   selectError,
   selectPage,
-  selectTotalCount,
   selectPageCount,
   selectAll: selectSearchResults,
   selectHasMoreResults,

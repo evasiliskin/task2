@@ -35,11 +35,4 @@ export const imageEditorFeature = createFeature({
   }),
 });
 
-export const {
-  selectImageEditorState,
-  selectIds: selectPolygonIds,
-  selectEntities: selectPolygonEntities,
-  selectAll: selectAllPolygons,
-  selectTotal: selectPolygonCount,
-  selectPolygonByImageId,
-} = imageEditorFeature;
+export const { selectImageEditorState, selectPolygonByImageId } = imageEditorFeature;

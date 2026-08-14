@@ -51,9 +51,5 @@ export const queryHistoryFeature = createFeature({
   }),
 });
 
-export const {
-  selectQueryHistoryState,
-  selectAll: selectQueryHistoryEntries,
-  selectEntities: selectQueryHistoryEntities,
-  selectTotal: selectQueryHistoryCount,
-} = queryHistoryFeature;
+export const { selectQueryHistoryState, selectAll: selectQueryHistoryEntries } =
+  queryHistoryFeature;
