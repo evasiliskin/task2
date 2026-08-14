@@ -1,25 +1,45 @@
 import { Injectable } from '@angular/core';
 import { MappedSearchPage } from './search-result.mapper';
 
-const MAX_CACHE_ENTRIES = 30;
+export const MAX_CACHE_ENTRIES = 30;
+export const CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface CacheEntry {
+  readonly value: MappedSearchPage;
+  readonly storedAt: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class SearchResultsCache {
-  private readonly entries = new Map<string, MappedSearchPage>();
+  private readonly entries = new Map<string, CacheEntry>();
 
   get(query: string, page: number): MappedSearchPage | undefined {
-    return this.entries.get(this.cacheKey(query, page));
+    const key = this.cacheKey(query, page);
+    const entry = this.entries.get(key);
+    if (!entry) {
+      return undefined;
+    }
+    if (Date.now() - entry.storedAt >= CACHE_TTL_MS) {
+      this.entries.delete(key);
+      return undefined;
+    }
+    this.entries.delete(key);
+    this.entries.set(key, entry);
+    return entry.value;
   }
 
   set(query: string, page: number, value: MappedSearchPage): void {
     const key = this.cacheKey(query, page);
-    if (!this.entries.has(key) && this.entries.size >= MAX_CACHE_ENTRIES) {
-      const oldestKey = this.entries.keys().next().value;
-      if (oldestKey !== undefined) {
-        this.entries.delete(oldestKey);
+    this.entries.delete(key);
+    this.entries.set(key, { value, storedAt: Date.now() });
+
+    while (this.entries.size > MAX_CACHE_ENTRIES) {
+      const leastRecentlyUsedKey = this.entries.keys().next().value;
+      if (leastRecentlyUsedKey === undefined) {
+        return;
       }
+      this.entries.delete(leastRecentlyUsedKey);
     }
-    this.entries.set(key, value);
   }
 
   private cacheKey(query: string, page: number): string {
