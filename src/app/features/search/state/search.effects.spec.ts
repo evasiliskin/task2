@@ -210,6 +210,18 @@ describe('SearchEffects', () => {
     expect(emitted).toEqual(SearchPageActions.nextPageRequested());
   });
 
+  it('should re-issue the same query through retry, when a search has failed', () => {
+    store.setState({
+      search: { ...initialState, activeQuery: 'cats', status: 'error', error: 'boom' },
+    });
+    const results: unknown[] = [];
+    effects.retry$.subscribe((action) => results.push(action));
+
+    actions$.next(SearchActions.retryRequested());
+
+    expect(results).toEqual([SearchActions.searchRequested({ query: 'cats' })]);
+  });
+
   it('should emit a user-safe message, when the API returns a malformed body', async () => {
     openverseApi.searchImages.mockReturnValue(of({ result_count: 1, page_count: 1 }));
     const results: unknown[] = [];

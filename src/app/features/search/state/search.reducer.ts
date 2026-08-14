@@ -42,15 +42,17 @@ export const searchFeature = createFeature({
       }),
     ),
     on(SearchActions.queryCleared, (state) =>
-      searchResultsAdapter.removeAll({
-        ...state,
-        activeQuery: null,
-        status: 'idle',
-        error: null,
-        page: 0,
-        totalCount: 0,
-        pageCount: 0,
-      }),
+      state.status === 'idle' && state.activeQuery === null
+        ? state
+        : searchResultsAdapter.removeAll({
+            ...state,
+            activeQuery: null,
+            status: 'idle',
+            error: null,
+            page: 0,
+            totalCount: 0,
+            pageCount: 0,
+          }),
     ),
     on(SearchPageActions.nextPageRequested, (state) =>
       (state.status === 'success' || state.status === 'loadingMoreError') &&

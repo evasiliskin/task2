@@ -120,6 +120,25 @@ describe('search reducer', () => {
     expect(state.ids).toEqual(['1']);
   });
 
+  it('should return the identical state object, when queryCleared arrives on already-idle state', () => {
+    const next = searchFeature.reducer(initialState, SearchActions.queryCleared());
+
+    expect(next).toBe(initialState);
+  });
+
+  it('should still clear results, when queryCleared arrives after a successful search', () => {
+    const populated = searchFeature.reducer(
+      initialState,
+      SearchActions.searchRequested({ query: 'cats' }),
+    );
+
+    const next = searchFeature.reducer(populated, SearchActions.queryCleared());
+
+    expect(next.activeQuery).toBeNull();
+    expect(next.status).toBe('idle');
+    expect(next.ids).toHaveLength(0);
+  });
+
   it('should reset to idle, when queryCleared is dispatched', () => {
     const afterPageOne = reducer(
       activeCatsState,

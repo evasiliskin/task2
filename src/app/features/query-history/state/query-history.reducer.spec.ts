@@ -1,7 +1,12 @@
-import { queryHistoryFeature, MAX_QUERY_HISTORY_ENTRIES } from './query-history.reducer';
+import {
+  queryHistoryFeature,
+  selectQueryHistoryEntries,
+  initialState,
+  MAX_QUERY_HISTORY_ENTRIES,
+} from './query-history.reducer';
 import { QueryHistoryActions } from './query-history.actions';
 
-const { reducer, initialState } = queryHistoryFeature;
+const { reducer } = queryHistoryFeature;
 
 describe('query-history reducer', () => {
   it('should add a new entry, when queryRecorded is dispatched for a new query', () => {
@@ -86,7 +91,7 @@ describe('query-history selectors', () => {
       initialState,
       QueryHistoryActions.queryRecorded({ query: 'cats', usedAt: 100 }),
     );
-    expect(queryHistoryFeature.selectQueryHistoryEntries({ queryHistory: state })).toEqual([
+    expect(selectQueryHistoryEntries({ queryHistory: state })).toEqual([
       { query: 'cats', canonicalQuery: 'cats', words: ['cats'], lastUsedAt: 100 },
     ]);
   });

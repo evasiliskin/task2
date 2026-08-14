@@ -43,7 +43,7 @@ const queryHistoryReducer = createReducer(
   }),
 );
 
-const queryHistoryFeatureObj = createFeature({
+export const queryHistoryFeature = createFeature({
   name: 'queryHistory',
   reducer: queryHistoryReducer,
   extraSelectors: ({ selectQueryHistoryState }) => ({
@@ -51,10 +51,9 @@ const queryHistoryFeatureObj = createFeature({
   }),
 });
 
-export const queryHistoryFeature = {
-  initialState,
-  ...queryHistoryFeatureObj,
-  selectQueryHistoryEntries: queryHistoryFeatureObj.selectAll,
-};
-
-export const { selectQueryHistoryState } = queryHistoryFeature;
+export const {
+  selectQueryHistoryState,
+  selectAll: selectQueryHistoryEntries,
+  selectEntities: selectQueryHistoryEntities,
+  selectTotal: selectQueryHistoryCount,
+} = queryHistoryFeature;

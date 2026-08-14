@@ -6,7 +6,7 @@ import { filter, take } from 'rxjs/operators';
 import { SearchApiActions } from '../../search/state/search.actions';
 import { QueryHistoryFacade } from '../query-history.facade';
 import { QueryHistoryEffects } from './query-history.effects';
-import { queryHistoryFeature } from './query-history.reducer';
+import { queryHistoryFeature, selectQueryHistoryEntries } from './query-history.reducer';
 
 function configure() {
   TestBed.configureTestingModule({
@@ -38,7 +38,7 @@ describe('query-history state integration (real store + real reducer + real effe
     );
 
     await firstValueFrom(
-      store.select(queryHistoryFeature.selectQueryHistoryEntries).pipe(
+      store.select(selectQueryHistoryEntries).pipe(
         filter((entries) => entries.length > 0),
         take(1),
       ),
@@ -86,7 +86,7 @@ describe('query-history state integration (real store + real reducer + real effe
     );
 
     await firstValueFrom(
-      store.select(queryHistoryFeature.selectQueryHistoryEntries).pipe(
+      store.select(selectQueryHistoryEntries).pipe(
         filter((entries) => entries.some((entry) => entry.query === 'sentinel')),
         take(1),
       ),
@@ -118,7 +118,7 @@ describe('query-history state integration (real store + real reducer + real effe
     );
 
     await firstValueFrom(
-      store.select(queryHistoryFeature.selectQueryHistoryEntries).pipe(
+      store.select(selectQueryHistoryEntries).pipe(
         filter((entries) => entries.some((entry) => entry.query === 'cats')),
         take(1),
       ),
