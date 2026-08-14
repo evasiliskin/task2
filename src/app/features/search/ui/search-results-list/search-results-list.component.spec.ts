@@ -174,4 +174,26 @@ describe('SearchResultsList', () => {
     const loadingBlock = fixture.nativeElement.querySelector('.search-results-list__loading-more');
     expect(loadingBlock.getAttribute('aria-live')).toBe('polite');
   });
+
+  it('emits nextPageRequested at the bottom of a tall viewport, where the first-visible index alone would not', () => {
+    TestBed.configureTestingModule({ imports: [SearchResultsList] });
+    const fixture = TestBed.createComponent(SearchResultsList);
+    fixture.componentRef.setInput('results', makeResults(100));
+    fixture.componentRef.setInput('hasMoreResults', true);
+    fixture.componentRef.setInput('isLoadingMore', false);
+    fixture.detectChanges();
+
+    const instance = fixture.componentInstance as unknown as {
+      onScrolledIndexChange(i: number): void;
+      viewport: () => { getViewportSize(): number } | undefined;
+    };
+    Object.defineProperty(instance, 'viewport', { value: () => ({ getViewportSize: () => 1152 }) });
+
+    const nextPageSpy = vi.fn();
+    fixture.componentInstance.nextPageRequested.subscribe(nextPageSpy);
+
+    instance.onScrolledIndexChange(88);
+
+    expect(nextPageSpy).toHaveBeenCalled();
+  });
 });

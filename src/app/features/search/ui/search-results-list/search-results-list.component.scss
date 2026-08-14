@@ -13,7 +13,7 @@
 }
 
 .search-results-list__item {
-  height: 96px;
+  height: var(--search-result-row-height);
   box-sizing: border-box;
 }
 
