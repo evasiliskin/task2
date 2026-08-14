@@ -120,6 +120,10 @@ export class PolygonCanvas {
   }
 
   protected onPointerDown(event: PointerEvent): void {
+    if (this.imageStatus() === 'error') {
+      return;
+    }
+
     const boxSize = this.boxSize();
     if (boxSize.width === 0 || boxSize.height === 0) {
       return;

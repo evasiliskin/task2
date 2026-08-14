@@ -398,4 +398,22 @@ describe('PolygonCanvas', () => {
 
     expect(fixture.nativeElement.textContent).not.toContain('Loading image');
   });
+
+  it('should not place draw points or commit a polygon, when the canvas receives pointerdown and dblclick after the image failed to load', () => {
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
+    img.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+
+    const drawnSpy = vi.fn();
+    fixture.componentInstance.polygonDrawn.subscribe(drawnSpy);
+
+    firePointer(canvas, 'pointerdown', 10, 10);
+    firePointer(canvas, 'pointerdown', 50, 10);
+    firePointer(canvas, 'pointerdown', 30, 50);
+    firePointer(canvas, 'pointerdown', 30, 50);
+    canvas.dispatchEvent(new Event('dblclick'));
+    fixture.detectChanges();
+
+    expect(drawnSpy).not.toHaveBeenCalled();
+  });
 });
