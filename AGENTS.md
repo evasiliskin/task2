@@ -408,7 +408,6 @@ A change is complete only when:
 - accessibility is considered
 - performance impact is understood
 
-
 ## Documentation lookups
 
 Use Context7 (or whichever MCP/CLI documentation tool is available) whenever you need current documentation for Angular, Angular Material, NG-ZORRO (Ant Design for Angular), Vitest, TypeScript, RxJS, or any other library, framework, API, or tool used in this project.
