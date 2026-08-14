@@ -5,6 +5,7 @@ import { clampPolygonPosition } from '../domain/geometry/clamp-polygon-position'
 import { getRotationHandlePoint } from '../domain/geometry/get-rotation-handle-point';
 import { getWorldPoints } from '../domain/geometry/get-world-points';
 import { isPointInPolygon } from '../domain/geometry/is-point-in-polygon';
+import { normalizeRotation } from '../domain/geometry/normalize-rotation';
 import { addPoints } from '../domain/geometry/point-math';
 import { toNormalizedPoint } from '../domain/geometry/to-normalized-point';
 import { toPixelPoint } from '../domain/geometry/to-pixel-point';
@@ -95,7 +96,7 @@ export class PolygonInteractionController {
     const currentAngle = pixelAngle(pixelPointer, centerPixel);
     return {
       ...session.polygon,
-      rotationRadians: currentAngle - session.angleOffset,
+      rotationRadians: normalizeRotation(currentAngle - session.angleOffset),
     };
   }
 
@@ -104,6 +105,6 @@ export class PolygonInteractionController {
   }
 
   rotateByStep(polygon: Polygon, deltaRadians: number): Polygon {
-    return { ...polygon, rotationRadians: polygon.rotationRadians + deltaRadians };
+    return { ...polygon, rotationRadians: normalizeRotation(polygon.rotationRadians + deltaRadians) };
   }
 }

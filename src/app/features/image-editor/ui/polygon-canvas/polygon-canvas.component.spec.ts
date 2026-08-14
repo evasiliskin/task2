@@ -237,7 +237,8 @@ describe('PolygonCanvas', () => {
     fireKey(canvas, ']');
     fixture.detectChanges();
 
-    expect(rotatedSpy).toHaveBeenCalledWith(Math.PI / 12);
+    expect(rotatedSpy).toHaveBeenCalled();
+    expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo(Math.PI / 12, 12);
     expect(fixture.nativeElement.textContent).toContain('Polygon rotated 15° clockwise.');
   });
 
@@ -250,7 +251,8 @@ describe('PolygonCanvas', () => {
     fireKey(canvas, '[');
     fixture.detectChanges();
 
-    expect(rotatedSpy).toHaveBeenCalledWith(-Math.PI / 12);
+    expect(rotatedSpy).toHaveBeenCalled();
+    expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo((Math.PI * 2) - (Math.PI / 12), 12);
     expect(fixture.nativeElement.textContent).toContain('Polygon rotated 15° counterclockwise.');
   });
 

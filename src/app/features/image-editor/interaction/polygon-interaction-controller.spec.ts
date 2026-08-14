@@ -3,6 +3,7 @@ import { Polygon } from '../domain/polygon.model';
 import { CanvasBoxSize, PixelPoint } from '../domain/geometry/coordinate-mapping.model';
 import {
   KEYBOARD_NUDGE_STEP,
+  KEYBOARD_ROTATION_STEP_RADIANS,
   PolygonInteractionController,
 } from './polygon-interaction-controller';
 
@@ -139,6 +140,18 @@ describe('PolygonInteractionController', () => {
       expect(updated.rotationRadians).toBeCloseTo(Math.PI / 12, 9);
       expect(updated.position).toEqual(square.position);
       expect(updated.points).toBe(square.points);
+    });
+
+    it('should keep the rotation within one turn, when stepped repeatedly', () => {
+      const controller = new PolygonInteractionController();
+      let polygon = square;
+
+      for (let i = 0; i < 40; i++) {
+        polygon = controller.rotateByStep(polygon, KEYBOARD_ROTATION_STEP_RADIANS);
+      }
+
+      expect(polygon.rotationRadians).toBeGreaterThanOrEqual(0);
+      expect(polygon.rotationRadians).toBeLessThan(Math.PI * 2);
     });
   });
 });
