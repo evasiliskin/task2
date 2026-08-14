@@ -218,6 +218,33 @@ navigation within a session, but reset on a full page reload.
 - Query history is capped at 50 entries; recording a 51st evicts the
   least-recently-used entry.
 
+## SEO & accessibility
+
+Single-route client app — see
+`docs/superpowers/specs/2026-08-14-seo-a11y-improvements-design.md` for the
+full reasoning behind these decisions. Summary:
+
+- **Metadata is static**, in `src/index.html` (title, description, robots,
+  canonical, Open Graph, Twitter card, one `WebApplication` JSON-LD block) —
+  no `Meta`/`Title` service was introduced, since nothing here varies
+  per-view. That would become justified if the app grew real per-route
+  content.
+- `https://image-search.example.com/` in `index.html` is a
+  placeholder (RFC 2606 `.example` domain) for canonical/OG/sitemap URLs —
+  replace it with the real deployed origin before shipping.
+- **Prerendered** (`ng add @angular/ssr`, `RenderMode.Prerender` for `/`,
+  `outputMode: "static"`) so crawlers see real HTML instead of an empty
+  `<app-root>`. Deploys as plain static files — no Node server required.
+  This only prerenders the idle shell; search results are per-user,
+  client-only NgRx state and were never going to be indexable regardless of
+  rendering strategy.
+- `public/robots.txt` / `public/sitemap.xml` cover the app's one real URL.
+- Two targeted accessibility gaps were closed: an accessible name for the
+  polygon canvas while drawing (previously only present once a polygon
+  existed), and `aria-modal`/`aria-labelledby` wiring on the image preview
+  dialog. Everything else audited (alt text, focus trap, keyboard support,
+  live regions, labeled input) was already correct and was left untouched.
+
 ## Testing strategy
 
 Prioritized per the local (gitignored) `.ai/skills/testing/SKILL.md`:

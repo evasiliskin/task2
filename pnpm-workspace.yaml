@@ -5,3 +5,4 @@ allowBuilds:
   msgpackr-extract: true
 minimumReleaseAgeExclude:
   - '@angular/cdk@22.1.2'
+  - '@angular/ssr@22.1.4'

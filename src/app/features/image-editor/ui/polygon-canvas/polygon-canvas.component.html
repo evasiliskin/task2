@@ -14,8 +14,8 @@
       #canvasEl
       class="polygon-canvas__overlay"
       [attr.tabindex]="0"
-      [attr.role]="polygon() ? 'group' : null"
-      [attr.aria-label]="polygon() ? editorAriaLabel : null"
+      role="group"
+      [attr.aria-label]="polygon() ? editorAriaLabel : drawAriaLabel"
       (pointerdown)="onPointerDown($event)"
       (pointermove)="onPointerMove($event)"
       (pointerup)="onPointerUp($event)"

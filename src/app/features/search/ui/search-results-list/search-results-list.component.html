@@ -1,5 +1,6 @@
 <div class="search-results-list">
   <cdk-virtual-scroll-viewport
+    role="list"
     [itemSize]="rowHeightPx"
     [minBufferPx]="rowHeightPx * 6"
     [maxBufferPx]="rowHeightPx * 12"
@@ -9,6 +10,7 @@
     <div
       *cdkVirtualFor="let result of results(); trackBy: trackById"
       class="search-results-list__item"
+      role="listitem"
     >
       <app-search-result-item [result]="result" (selected)="resultSelected.emit(result)" />
     </div>

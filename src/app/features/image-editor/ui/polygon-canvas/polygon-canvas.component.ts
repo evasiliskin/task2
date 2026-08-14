@@ -65,6 +65,7 @@ export class PolygonCanvas {
   protected readonly editStatus = signal('');
   protected readonly canvasUnavailable = signal(false);
   protected readonly imageStatus = signal<'loading' | 'loaded' | 'error'>('loading');
+  protected readonly drawAriaLabel = 'Polygon editor. Click the image to start drawing a polygon.';
   protected readonly editorAriaLabel =
     'Polygon editor. Use arrow keys to move, [ and ] to rotate, Delete to remove.';
 

@@ -23,6 +23,7 @@ import { SearchEffects } from './features/search/state/search.effects';
 import { queryHistoryFeature } from './features/query-history/state/query-history.reducer';
 import { QueryHistoryEffects } from './features/query-history/state/query-history.effects';
 import { imageEditorFeature } from './features/image-editor/state/image-editor.reducer';
+import { provideClientHydration } from '@angular/platform-browser';
 
 registerLocaleData(en);
 
@@ -45,5 +46,6 @@ export const appConfig: ApplicationConfig = {
     provideNzI18n(en_US),
     provideNzDateFnsAdapter(),
     importProvidersFrom(NzModalModule),
+    provideClientHydration(),
   ],
 };

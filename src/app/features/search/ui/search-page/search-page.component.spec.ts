@@ -202,4 +202,32 @@ describe('SearchPage', () => {
       height: 0,
     });
   });
+
+  it('adds a visually-hidden "Search results" heading above the results region, once there are results', async () => {
+    const result: SearchResult = {
+      id: '1',
+      title: 'A cat',
+      imageUrl: '',
+      thumbnailUrl: '',
+      width: 0,
+      height: 0,
+      creator: null,
+      sourceUrl: '',
+    };
+    configure({ status: 'success', results: [result], hasMoreResults: true });
+    const fixture = TestBed.createComponent(SearchPage);
+    fixture.detectChanges();
+
+    const heading = fixture.nativeElement.querySelector('h2');
+    expect(heading?.textContent?.trim()).toBe('Search results');
+    expect(heading?.classList.contains('visually-hidden')).toBe(true);
+  });
+
+  it('does not render the "Search results" heading before there are results', () => {
+    configure({ status: 'idle' });
+    const fixture = TestBed.createComponent(SearchPage);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('h2')).toBeNull();
+  });
 });

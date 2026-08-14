@@ -196,4 +196,22 @@ describe('SearchResultsList', () => {
 
     expect(nextPageSpy).toHaveBeenCalled();
   });
+
+  it('exposes the results as a list for assistive technology', async () => {
+    TestBed.configureTestingModule({ imports: [SearchResultsList] });
+    const fixture = TestBed.createComponent(SearchResultsList);
+    fixture.componentRef.setInput('results', makeResults(3));
+    fixture.detectChanges();
+
+    const viewport = fixture.nativeElement.querySelector('cdk-virtual-scroll-viewport');
+    expect(viewport.getAttribute('role')).toBe('list');
+
+    for (let i = 0; i < 3; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fixture.detectChanges();
+    }
+    const items = fixture.nativeElement.querySelectorAll('.search-results-list__item');
+    expect(items.length).toBeGreaterThan(0);
+    items.forEach((item: Element) => expect(item.getAttribute('role')).toBe('listitem'));
+  });
 });

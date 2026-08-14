@@ -117,4 +117,30 @@ describe('ImagePreviewDialog', () => {
 
     expect(facade.deletePolygon).toHaveBeenCalledWith('image-1');
   });
+
+  it('sets aria-modal and aria-labelledby on the ancestor dialog container, referencing the ant-modal-title element', () => {
+    configure();
+    const fixture = TestBed.createComponent(ImagePreviewDialog);
+
+    const dialogContainer = document.createElement('div');
+    dialogContainer.setAttribute('role', 'dialog');
+    const titleEl = document.createElement('div');
+    titleEl.className = 'ant-modal-title';
+    dialogContainer.appendChild(titleEl);
+    dialogContainer.appendChild(fixture.nativeElement);
+
+    fixture.detectChanges();
+
+    expect(dialogContainer.getAttribute('aria-modal')).toBe('true');
+    const labelledBy = dialogContainer.getAttribute('aria-labelledby');
+    expect(labelledBy).toBeTruthy();
+    expect(titleEl.id).toBe(labelledBy);
+  });
+
+  it('does nothing when there is no ancestor dialog container (defensive no-op)', () => {
+    configure();
+    const fixture = TestBed.createComponent(ImagePreviewDialog);
+
+    expect(() => fixture.detectChanges()).not.toThrow();
+  });
 });

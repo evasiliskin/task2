@@ -200,10 +200,10 @@ describe('PolygonCanvas', () => {
     expect(fixture.nativeElement.textContent).toContain('Click the image to start drawing');
   });
 
-  it('should remain keyboard-focusable but without a group role or label, when no polygon exists yet', () => {
+  it('should be keyboard-focusable with an accessible name describing how to start drawing, when no polygon exists yet', () => {
     expect(canvas.getAttribute('tabindex')).toBe('0');
-    expect(canvas.getAttribute('role')).toBeNull();
-    expect(canvas.getAttribute('aria-label')).toBeNull();
+    expect(canvas.getAttribute('role')).toBe('group');
+    expect(canvas.getAttribute('aria-label')).toContain('start drawing');
   });
 
   it('should be keyboard-focusable with an accessible label mentioning arrow keys, when a polygon exists', () => {
@@ -211,6 +211,7 @@ describe('PolygonCanvas', () => {
     fixture.detectChanges();
 
     expect(canvas.getAttribute('tabindex')).toBe('0');
+    expect(canvas.getAttribute('role')).toBe('group');
     expect(canvas.getAttribute('aria-label')).toContain('arrow keys');
   });
 
