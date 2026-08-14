@@ -89,7 +89,10 @@ describe('search reducer', () => {
 
   it('should set an error message and status, when the initial search fails', () => {
     const loadingState = { ...activeCatsState, status: 'loading' as const };
-    const state = reducer(loadingState, SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }));
+    const state = reducer(
+      loadingState,
+      SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }),
+    );
 
     expect(state.status).toBe('error');
     expect(state.error).toBe('boom');
@@ -101,7 +104,10 @@ describe('search reducer', () => {
       ...searchResultsAdapter.setAll([makeResult('1')], activeCatsState),
       status: 'success' as const,
     };
-    const state = reducer(successState, SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }));
+    const state = reducer(
+      successState,
+      SearchApiActions.loadResultsFailure({ query: 'cats', page: 1, message: 'boom' }),
+    );
 
     expect(state).toBe(successState);
   });
@@ -300,7 +306,15 @@ describe('search selectors', () => {
       }),
     );
 
-    const viewModel = selectSearchViewModel.projector([], 'success', null, null, true, false, false);
+    const viewModel = selectSearchViewModel.projector(
+      [],
+      'success',
+      null,
+      null,
+      true,
+      false,
+      false,
+    );
 
     expect(viewModel).toEqual({
       results: [],

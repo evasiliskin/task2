@@ -31,9 +31,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function isNormalizedHttpError(value: unknown): value is NormalizedHttpError {
   return (
-    isRecord(value) &&
-    typeof value['message'] === 'string' &&
-    typeof value['status'] === 'number'
+    isRecord(value) && typeof value['message'] === 'string' && typeof value['status'] === 'number'
   );
 }
 

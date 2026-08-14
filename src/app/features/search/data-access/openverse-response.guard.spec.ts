@@ -1,7 +1,4 @@
-import {
-  assertOpenverseSearchResponse,
-  InvalidApiResponseError,
-} from './openverse-response.guard';
+import { assertOpenverseSearchResponse, InvalidApiResponseError } from './openverse-response.guard';
 
 const valid = {
   result_count: 1,

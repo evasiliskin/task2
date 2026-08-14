@@ -19,10 +19,7 @@ describe('ImagePreviewDialogService', () => {
   beforeEach(() => {
     create = vi.fn().mockReturnValue({ afterClose: of(undefined) });
     TestBed.configureTestingModule({
-      providers: [
-        ImagePreviewDialogService,
-        { provide: NzModalService, useValue: { create } },
-      ],
+      providers: [ImagePreviewDialogService, { provide: NzModalService, useValue: { create } }],
     });
     service = TestBed.inject(ImagePreviewDialogService);
   });
@@ -57,7 +54,7 @@ describe('ImagePreviewDialogService', () => {
     await expect(service.open(target)).resolves.toBeUndefined();
     expect(errorSpy).toHaveBeenCalledWith(
       'Failed to open the image preview dialog',
-      expect.any(Error)
+      expect.any(Error),
     );
 
     errorSpy.mockRestore();

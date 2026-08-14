@@ -105,6 +105,9 @@ export class PolygonInteractionController {
   }
 
   rotateByStep(polygon: Polygon, deltaRadians: number): Polygon {
-    return { ...polygon, rotationRadians: normalizeRotation(polygon.rotationRadians + deltaRadians) };
+    return {
+      ...polygon,
+      rotationRadians: normalizeRotation(polygon.rotationRadians + deltaRadians),
+    };
   }
 }

@@ -1,4 +1,8 @@
-import { SearchResultsCache, MAX_CACHE_ENTRIES, CACHE_TTL_MS } from './search-results-cache.service';
+import {
+  SearchResultsCache,
+  MAX_CACHE_ENTRIES,
+  CACHE_TTL_MS,
+} from './search-results-cache.service';
 import { MappedSearchPage } from './search-result.mapper';
 
 describe('SearchResultsCache', () => {
