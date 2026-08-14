@@ -1,4 +1,4 @@
-import { OpenverseSearchResponseDto } from './openverse-image.dto';
+import { OpenverseImageDto, OpenverseSearchResponseDto } from './openverse-image.dto';
 
 export class InvalidApiResponseError extends Error {
   constructor(readonly reason: string) {
@@ -11,7 +11,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isImageEntry(value: unknown): boolean {
+export function isImageEntry(value: unknown): value is OpenverseImageDto {
   if (!isRecord(value)) {
     return false;
   }
@@ -23,6 +23,12 @@ function isImageEntry(value: unknown): boolean {
   );
 }
 
+/**
+ * Validates only the response envelope. Individual malformed entries within
+ * `results` are not rejected here — Openverse doesn't guarantee every field
+ * on every entry, so callers filter entries with `isImageEntry` instead of
+ * failing the whole page over one bad item.
+ */
 export function assertOpenverseSearchResponse(
   value: unknown,
 ): asserts value is OpenverseSearchResponseDto {
@@ -37,8 +43,5 @@ export function assertOpenverseSearchResponse(
   }
   if (typeof value['page_count'] !== 'number' || !Number.isFinite(value['page_count'])) {
     throw new InvalidApiResponseError('page-count-not-a-number');
-  }
-  if (!value['results'].every(isImageEntry)) {
-    throw new InvalidApiResponseError('result-entry-malformed');
   }
 }

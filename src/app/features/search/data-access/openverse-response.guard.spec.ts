@@ -1,4 +1,8 @@
-import { assertOpenverseSearchResponse, InvalidApiResponseError } from './openverse-response.guard';
+import {
+  assertOpenverseSearchResponse,
+  InvalidApiResponseError,
+  isImageEntry,
+} from './openverse-response.guard';
 
 const valid = {
   result_count: 1,
@@ -44,16 +48,10 @@ describe('assertOpenverseSearchResponse', () => {
     );
   });
 
-  it('should reject a result entry without a string id', () => {
+  it("should not reject a malformed result entry, since per-entry validation is not the envelope guard's job", () => {
     expect(() =>
       assertOpenverseSearchResponse({ ...valid, results: [{ ...valid.results[0], id: 7 }] }),
-    ).toThrow(InvalidApiResponseError);
-  });
-
-  it('should reject a result entry without a usable image url', () => {
-    expect(() =>
-      assertOpenverseSearchResponse({ ...valid, results: [{ ...valid.results[0], url: null }] }),
-    ).toThrow(InvalidApiResponseError);
+    ).not.toThrow();
   });
 
   it('should carry a machine-readable reason', () => {
@@ -63,5 +61,23 @@ describe('assertOpenverseSearchResponse', () => {
     } catch (error) {
       expect((error as InvalidApiResponseError).reason).toBe('results-not-an-array');
     }
+  });
+});
+
+describe('isImageEntry', () => {
+  it('should accept a well-formed image entry', () => {
+    expect(isImageEntry(valid.results[0])).toBe(true);
+  });
+
+  it('should reject an entry without a string id', () => {
+    expect(isImageEntry({ ...valid.results[0], id: 7 })).toBe(false);
+  });
+
+  it('should reject an entry without a usable image url', () => {
+    expect(isImageEntry({ ...valid.results[0], url: null })).toBe(false);
+  });
+
+  it('should reject a non-object value', () => {
+    expect(isImageEntry(null)).toBe(false);
   });
 });

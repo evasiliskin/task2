@@ -74,4 +74,44 @@ describe('mapOpenverseSearchResponse', () => {
       InvalidApiResponseError,
     );
   });
+
+  it('should drop malformed entries and keep the well-formed ones, when one entry among several is malformed', () => {
+    const dto = {
+      result_count: 2,
+      page_count: 1,
+      results: [
+        {
+          id: '1',
+          title: 'One',
+          url: 'https://example.com/1.jpg',
+          thumbnail: 'https://example.com/1-thumb.jpg',
+          width: 100,
+          height: 100,
+          creator: null,
+          foreign_landing_url: 'https://example.com/1',
+        },
+        {
+          id: '2',
+          title: 'Two',
+          url: null,
+          thumbnail: 'https://example.com/2-thumb.jpg',
+          width: 100,
+          height: 100,
+          creator: null,
+          foreign_landing_url: 'https://example.com/2',
+        },
+      ],
+    };
+
+    const mapped = mapOpenverseSearchResponse(dto);
+
+    expect(mapped.results).toHaveLength(1);
+    expect(mapped.results[0].id).toBe('1');
+  });
+
+  it('should still throw InvalidApiResponseError, when the envelope itself is malformed', () => {
+    expect(() =>
+      mapOpenverseSearchResponse({ result_count: 1, page_count: 1, results: 'nope' }),
+    ).toThrow(InvalidApiResponseError);
+  });
 });
