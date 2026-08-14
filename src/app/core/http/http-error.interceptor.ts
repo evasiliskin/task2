@@ -25,12 +25,15 @@ function messageFor(status: number): string {
   return 'The request could not be completed. Please try again.';
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 export function isNormalizedHttpError(value: unknown): value is NormalizedHttpError {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { message?: unknown }).message === 'string' &&
-    typeof (value as { status?: unknown }).status === 'number'
+    isRecord(value) &&
+    typeof value['message'] === 'string' &&
+    typeof value['status'] === 'number'
   );
 }
 
