@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  EnvironmentProviders,
   importProvidersFrom,
   isDevMode,
   provideBrowserGlobalErrorListeners,
@@ -25,19 +26,22 @@ import { imageEditorFeature } from './features/image-editor/state/image-editor.r
 
 registerLocaleData(en);
 
+export function devtoolsProviders(devMode: boolean): EnvironmentProviders[] {
+  return devMode ? [provideStoreDevtools({ maxAge: 25, logOnly: false })] : [];
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withInterceptors([httpErrorInterceptor])),
     provideStore(),
-    provideEffects(),
     provideState(searchFeature),
     provideEffects(SearchEffects),
     provideState(queryHistoryFeature),
     provideEffects(QueryHistoryEffects),
     provideState(imageEditorFeature),
-    provideStoreDevtools({ maxAge: 25, logOnly: !isDevMode() }),
+    ...devtoolsProviders(isDevMode()),
     provideNzI18n(en_US),
     provideNzDateFnsAdapter(),
     importProvidersFrom(NzModalModule),
