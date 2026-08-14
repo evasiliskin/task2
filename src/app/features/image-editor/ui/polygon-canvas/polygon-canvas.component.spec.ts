@@ -294,4 +294,54 @@ describe('PolygonCanvas', () => {
 
     expect(movedSpy).not.toHaveBeenCalled();
   });
+
+  it('should size the backing store by the device pixel ratio and only when the size actually changes', async () => {
+    const setTransform = vi.fn();
+    const context = {
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      closePath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+      setTransform,
+      strokeStyle: '',
+      fillStyle: '',
+      lineWidth: 0,
+    } as unknown as CanvasRenderingContext2D;
+
+    const canvasElement = canvas as HTMLCanvasElement;
+    vi.spyOn(canvasElement, 'getContext').mockReturnValue(context);
+    vi.stubGlobal('devicePixelRatio', 2);
+
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+    expect(canvasElement.width).toBe(200);
+    expect(canvasElement.height).toBe(200);
+    expect(setTransform).toHaveBeenCalledWith(2, 0, 0, 2, 0, 0);
+
+    const widthSpy = vi.spyOn(canvasElement, 'width', 'set');
+    firePointer(canvas, 'pointerdown', 50, 50);
+    firePointer(canvas, 'pointermove', 55, 50);
+    firePointer(canvas, 'pointermove', 60, 50);
+    fixture.detectChanges();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+    expect(widthSpy).not.toHaveBeenCalled();
+  });
+
+  it('should announce that the canvas is unavailable, when a 2D context cannot be obtained', async () => {
+    fixture.componentRef.setInput('polygon', square);
+    fixture.detectChanges();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Polygon drawing is unavailable');
+  });
 });

@@ -16,6 +16,12 @@
     ></canvas>
   </div>
 
+  @if (canvasUnavailable()) {
+    <p class="polygon-canvas__unavailable" role="alert">
+      Polygon drawing is unavailable — this browser did not provide a 2D canvas context.
+    </p>
+  }
+
   <span class="polygon-canvas__sr-status" role="status" aria-live="polite">
     {{ editStatus() }}
   </span>

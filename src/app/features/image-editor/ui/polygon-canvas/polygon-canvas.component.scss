@@ -52,4 +52,10 @@
     font-size: 13px;
     color: var(--app-color-text-secondary);
   }
+
+  &__unavailable {
+    margin: 0;
+    font-size: 13px;
+    color: #cf1322;
+  }
 }

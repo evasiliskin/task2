@@ -1,9 +1,11 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   computed,
   effect,
+  inject,
   input,
   output,
   signal,
@@ -27,6 +29,13 @@ import { PolygonCanvasRenderer } from '../../rendering/polygon-canvas-renderer';
 type ActiveGesture =
   | { readonly kind: 'drag'; readonly session: DragSession }
   | { readonly kind: 'rotate'; readonly session: RotateSession };
+
+interface RenderFrame {
+  readonly size: CanvasBoxSize;
+  readonly drawPoints: readonly NormalizedPoint[];
+  readonly polygon: Polygon | null;
+  readonly displayPolygon: Polygon | null;
+}
 
 const KEYBOARD_ROTATION_STEP_DEGREES = Math.round((KEYBOARD_ROTATION_STEP_RADIANS * 180) / Math.PI);
 
@@ -52,6 +61,7 @@ export class PolygonCanvas {
   protected readonly draftPolygon = signal<Polygon | null>(null);
   protected readonly displayPolygon = computed(() => this.draftPolygon() ?? this.polygon());
   protected readonly editStatus = signal('');
+  protected readonly canvasUnavailable = signal(false);
   protected readonly editorAriaLabel =
     'Polygon editor. Use arrow keys to move, [ and ] to rotate, Delete to remove.';
 
@@ -62,6 +72,12 @@ export class PolygonCanvas {
   private readonly controller = new PolygonInteractionController();
   private readonly renderer = new PolygonCanvasRenderer();
   private activeGesture: ActiveGesture | null = null;
+
+  private readonly destroyRef = inject(DestroyRef);
+  private context: CanvasRenderingContext2D | null = null;
+  private contextResolved = false;
+  private pendingFrame: RenderFrame | null = null;
+  private frameHandle: number | null = null;
 
   constructor() {
     effect((onCleanup) => {
@@ -81,23 +97,21 @@ export class PolygonCanvas {
 
     effect(() => {
       const size = this.boxSize();
-      const canvas = this.canvasEl().nativeElement;
-      if (size.width === 0 || size.height === 0) {
+      if (size.width <= 0 || size.height <= 0) {
         return;
       }
-      canvas.width = size.width;
-      canvas.height = size.height;
+      this.scheduleRender({
+        size,
+        drawPoints: this.drawPoints(),
+        polygon: this.polygon(),
+        displayPolygon: this.displayPolygon(),
+      });
+    });
 
-      const context = canvas.getContext('2d');
-      if (!context) {
-        return;
-      }
-
-      const points = this.drawPoints();
-      if (!this.polygon() && points.length > 0) {
-        this.renderer.renderDrawPreview(context, points, size);
-      } else {
-        this.renderer.render(context, this.displayPolygon(), size);
+    this.destroyRef.onDestroy(() => {
+      if (this.frameHandle !== null) {
+        cancelAnimationFrame(this.frameHandle);
+        this.frameHandle = null;
       }
     });
   }
@@ -244,5 +258,54 @@ export class PolygonCanvas {
     }
     this.polygonDrawn.emit(points);
     this.drawPoints.set([]);
+  }
+
+  private scheduleRender(frame: RenderFrame): void {
+    this.pendingFrame = frame;
+    if (this.frameHandle !== null) {
+      return;
+    }
+    this.frameHandle = requestAnimationFrame(() => {
+      this.frameHandle = null;
+      const nextFrame = this.pendingFrame;
+      this.pendingFrame = null;
+      if (nextFrame) {
+        this.draw(nextFrame);
+      }
+    });
+  }
+
+  private draw(frame: RenderFrame): void {
+    const canvas = this.canvasEl().nativeElement;
+    const pixelRatio = globalThis.devicePixelRatio || 1;
+    const backingWidth = Math.round(frame.size.width * pixelRatio);
+    const backingHeight = Math.round(frame.size.height * pixelRatio);
+
+    if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
+      canvas.width = backingWidth;
+      canvas.height = backingHeight;
+    }
+
+    const context = this.resolveContext(canvas);
+    if (!context) {
+      return;
+    }
+
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+    if (!frame.polygon && frame.drawPoints.length > 0) {
+      this.renderer.renderDrawPreview(context, frame.drawPoints, frame.size);
+    } else {
+      this.renderer.render(context, frame.displayPolygon, frame.size);
+    }
+  }
+
+  private resolveContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
+    if (!this.contextResolved) {
+      this.context = canvas.getContext('2d');
+      this.contextResolved = true;
+      this.canvasUnavailable.set(this.context === null);
+    }
+    return this.context;
   }
 }
