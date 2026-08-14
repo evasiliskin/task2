@@ -72,7 +72,7 @@
     color: var(--app-color-text-secondary);
 
     &--error {
-      color: #cf1322;
+      color: var(--app-color-error);
     }
   }
 }
