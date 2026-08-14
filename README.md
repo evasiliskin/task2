@@ -1,8 +1,8 @@
 # Frontend Screening Assignment
 
-An Angular application to search backed by [Openverse](https://openverse.org), with an
-NgRx-backed search history, and a Canvas-based polygon editor for annotating
-the selected image.
+An Angular typeahead image search application backed by [Openverse](https://openverse.org),
+with an NgRx-backed search history, and a Canvas-based polygon editor for
+annotating the selected image.
 
 ## Technology stack
 
@@ -62,9 +62,10 @@ src/app/
 live there. Each feature under `features/` owns its own domain, data-access,
 state, and UI.
 
-See [AGENTS.md](AGENTS.md) for the full architectural contract, and
-[.ai/skills/](.ai/skills/) for topic-specific rules (Angular, NgRx, RxJS,
-testing, performance, canvas, accessibility, code review).
+See [AGENTS.md](AGENTS.md) for the full architectural contract. Topic-specific
+rules (Angular, NgRx, RxJS, testing, performance, canvas, accessibility, code
+review) live under `.ai/skills/`, a gitignored local directory not part of
+this repository.
 
 ### Cross-feature contracts
 
@@ -72,10 +73,11 @@ testing, performance, canvas, accessibility, code review).
   action via its own effect (only records a query when it's page 1 and
   `resultCount > 0`) — a one-directional dependency on an action _shape_, not
   a facade import.
-- `search-page` calls `image-editor.facade.open(result)` to launch the dialog
-  after a result is selected. The dialog receives only a plain
-  `{ imageId, imageUrl, title }` input — it has no knowledge of Openverse,
-  HTTP, or NgRx search state.
+- `search-page` calls `ImagePreviewDialogService.open(target)` to launch the
+  dialog after a result is selected — dialog presentation lives in that
+  service, not in `image-editor.facade.ts`. The dialog receives only a plain
+  `ImagePreviewTarget` input (`{ imageId, imageUrl, title, width, height }`)
+  — it has no knowledge of Openverse, HTTP, or NgRx search state.
 
 ## Search & pagination
 
@@ -94,7 +96,7 @@ testing, performance, canvas, accessibility, code review).
   in flight is dropped.
 - Results are `@ngrx/entity`-adapted (`upsertMany`, keyed by Openverse's
   stable `id`), which also makes duplicate IDs across pages self-healing.
-- `SearchResultsCache` is an in-memory LRU cache (`Map<"query|page", Result[]>`,
+- `SearchResultsCache` is an in-memory LRU cache (`Map<"query|page", MappedSearchPage>`,
   capped at 30 entries, 5-minute TTL) consulted inside the effect before
   hitting the network — session-scoped, no `localStorage`/IndexedDB layer;
   see Limitations below.
@@ -218,7 +220,7 @@ navigation within a session, but reset on a full page reload.
 
 ## Testing strategy
 
-Prioritized per [.ai/skills/testing/SKILL.md](.ai/skills/testing/SKILL.md):
+Prioritized per the local (gitignored) `.ai/skills/testing/SKILL.md`:
 
 1. Geometry pure functions — table-driven tests for rotation, translation,
    centroid, bounding box, coordinate normalization, hit-testing. No
@@ -231,6 +233,14 @@ Prioritized per [.ai/skills/testing/SKILL.md](.ai/skills/testing/SKILL.md):
 5. Domain rules — `normalizeSearchQuery`, `isMeaningfulQuery`, `suggestionsFor`.
 6. Critical component interactions — e.g. virtual-scroll near-end trigger
    dispatches next-page, dialog restores a saved polygon, keyboard editing.
+
+There's also a Playwright end-to-end suite
+(`e2e/search-pagination-polygon.spec.ts`) covering the full flow — search →
+pagination → dialog → polygon draw/drag → reopen/restoration — at three
+viewport heights. Run it with `pnpm run e2e` (requires `npx playwright
+install chromium` once, beforehand). It is deliberately **not** part of
+`pnpm run check` or the pre-push hook, since it needs a running dev server
+and an installed browser rather than just Node.
 
 ## Development
 
