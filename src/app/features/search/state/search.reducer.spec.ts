@@ -1,4 +1,9 @@
-import { searchFeature, searchResultsAdapter, initialState } from './search.reducer';
+import {
+  searchFeature,
+  searchResultsAdapter,
+  initialState,
+  selectSearchViewModel,
+} from './search.reducer';
 import { SearchPageActions, SearchActions, SearchApiActions } from './search.actions';
 import { SearchResult } from '../domain/search-result.model';
 
@@ -281,5 +286,31 @@ describe('search selectors', () => {
     expect(
       searchFeature.selectIsLoadingMoreError({ search: { ...initialState, status: 'error' } }),
     ).toBe(false);
+  });
+
+  it('should project the full view model from one selector', () => {
+    const state = searchFeature.reducer(
+      { ...initialState, activeQuery: 'cats' },
+      SearchApiActions.loadResultsSuccess({
+        query: 'cats',
+        page: 1,
+        results: [],
+        totalCount: 0,
+        pageCount: 3,
+      }),
+    );
+
+    const viewModel = selectSearchViewModel.projector([], 'success', null, null, true, false, false);
+
+    expect(viewModel).toEqual({
+      results: [],
+      status: 'success',
+      error: null,
+      activeQuery: null,
+      hasMoreResults: true,
+      isLoadingMore: false,
+      isLoadingMoreError: false,
+    });
+    expect(state.pageCount).toBe(3);
   });
 });

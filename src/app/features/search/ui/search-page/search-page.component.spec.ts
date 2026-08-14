@@ -5,26 +5,31 @@ import { SearchPage } from './search-page.component';
 import { SearchFacade } from '../../search.facade';
 import { QueryHistoryFacade } from '../../../query-history/query-history.facade';
 import { SearchResult } from '../../domain/search-result.model';
+import { SearchViewModel } from '../../state/search.reducer';
 import { SearchResultsList } from '../search-results-list/search-results-list.component';
 import { ImagePreviewDialogService } from '../../../image-editor/ui/image-preview-dialog/image-preview-dialog.service';
 
-function makeFacadeStub(overrides: Partial<Record<string, unknown>> = {}) {
+function makeFacadeStub(overrides: Partial<SearchViewModel> = {}) {
+  const viewModel: SearchViewModel = {
+    results: [],
+    status: 'idle',
+    error: null,
+    activeQuery: null,
+    hasMoreResults: false,
+    isLoadingMore: false,
+    isLoadingMoreError: false,
+    ...overrides,
+  };
+
   return {
-    results$: of([] as SearchResult[]),
-    status$: of('idle'),
-    error$: of(null),
-    activeQuery$: of(null),
-    hasMoreResults$: of(false),
-    isLoadingMore$: of(false),
-    isLoadingMoreError$: of(false),
+    viewModel$: of(viewModel),
     loadNextPage: vi.fn(),
     retry: vi.fn(),
-    ...overrides,
   };
 }
 
 describe('SearchPage', () => {
-  function configure(facadeOverrides: Partial<Record<string, unknown>> = {}) {
+  function configure(facadeOverrides: Partial<SearchViewModel> = {}) {
     TestBed.configureTestingModule({
       imports: [SearchPage],
       providers: [
@@ -36,7 +41,7 @@ describe('SearchPage', () => {
   }
 
   it('shows the error state and retries via the facade', () => {
-    configure({ status$: of('error'), error$: of('boom') });
+    configure({ status: 'error', error: 'boom' });
     const fixture = TestBed.createComponent(SearchPage);
     fixture.detectChanges();
 
@@ -48,7 +53,7 @@ describe('SearchPage', () => {
   });
 
   it('shows the empty state for a successful search with zero results', () => {
-    configure({ status$: of('success'), activeQuery$: of('dinosaurs'), results$: of([]) });
+    configure({ status: 'success', activeQuery: 'dinosaurs', results: [] });
     const fixture = TestBed.createComponent(SearchPage);
     fixture.detectChanges();
 
@@ -66,7 +71,7 @@ describe('SearchPage', () => {
       creator: null,
       sourceUrl: '',
     };
-    configure({ status$: of('success'), results$: of([result]), hasMoreResults$: of(true) });
+    configure({ status: 'success', results: [result], hasMoreResults: true });
     const fixture = TestBed.createComponent(SearchPage);
     fixture.detectChanges();
     // CdkVirtualScrollViewport renders *cdkVirtualFor content asynchronously (its own
@@ -92,11 +97,11 @@ describe('SearchPage', () => {
       sourceUrl: '',
     };
     configure({
-      status$: of('success'),
-      results$: of([result]),
-      hasMoreResults$: of(true),
-      isLoadingMore$: of(false),
-      isLoadingMoreError$: of(true),
+      status: 'success',
+      results: [result],
+      hasMoreResults: true,
+      isLoadingMore: false,
+      isLoadingMoreError: true,
     });
     const fixture = TestBed.createComponent(SearchPage);
     fixture.detectChanges();
@@ -127,10 +132,10 @@ describe('SearchPage', () => {
       sourceUrl: '',
     };
     configure({
-      status$: of('success'),
-      results$: of([result]),
-      hasMoreResults$: of(true),
-      isLoadingMore$: of(true),
+      status: 'success',
+      results: [result],
+      hasMoreResults: true,
+      isLoadingMore: true,
     });
     const fixture = TestBed.createComponent(SearchPage);
     fixture.detectChanges();
@@ -150,7 +155,7 @@ describe('SearchPage', () => {
       creator: null,
       sourceUrl: '',
     };
-    configure({ status$: of('success'), results$: of([result]), hasMoreResults$: of(true) });
+    configure({ status: 'success', results: [result], hasMoreResults: true });
     const fixture = TestBed.createComponent(SearchPage);
     fixture.detectChanges();
 
@@ -163,7 +168,7 @@ describe('SearchPage', () => {
   });
 
   it('should invite the user to start typing, when no search is active', () => {
-    configure({ status$: of('idle'), results$: of([]) });
+    configure({ status: 'idle', results: [] });
     const fixture = TestBed.createComponent(SearchPage);
     fixture.detectChanges();
 
@@ -181,7 +186,7 @@ describe('SearchPage', () => {
       creator: null,
       sourceUrl: '',
     };
-    configure({ status$: of('success'), results$: of([result]), hasMoreResults$: of(true) });
+    configure({ status: 'success', results: [result], hasMoreResults: true });
     const fixture = TestBed.createComponent(SearchPage);
     fixture.detectChanges();
 

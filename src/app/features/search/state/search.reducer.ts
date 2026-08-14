@@ -142,3 +142,40 @@ export const {
   selectIsLoadingMore,
   selectIsLoadingMoreError,
 } = searchFeature;
+
+export interface SearchViewModel {
+  readonly results: readonly SearchResult[];
+  readonly status: SearchStatus;
+  readonly error: string | null;
+  readonly activeQuery: string | null;
+  readonly hasMoreResults: boolean;
+  readonly isLoadingMore: boolean;
+  readonly isLoadingMoreError: boolean;
+}
+
+export const selectSearchViewModel = createSelector(
+  selectSearchResults,
+  selectStatus,
+  selectError,
+  selectActiveQuery,
+  selectHasMoreResults,
+  selectIsLoadingMore,
+  selectIsLoadingMoreError,
+  (
+    results,
+    status,
+    error,
+    activeQuery,
+    hasMoreResults,
+    isLoadingMore,
+    isLoadingMoreError,
+  ): SearchViewModel => ({
+    results,
+    status,
+    error,
+    activeQuery,
+    hasMoreResults,
+    isLoadingMore,
+    isLoadingMoreError,
+  }),
+);

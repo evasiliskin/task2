@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { SearchFacade } from '../../search.facade';
 import { SearchResult } from '../../domain/search-result.model';
+import { SearchViewModel } from '../../state/search.reducer';
 import { ImagePreviewDialogService } from '../../../image-editor/ui/image-preview-dialog/image-preview-dialog.service';
 import { SearchEmptyState } from '../search-empty-state/search-empty-state.component';
 import { SearchErrorState } from '../search-error-state/search-error-state.component';
@@ -17,25 +18,19 @@ import { SearchResultsList } from '../search-results-list/search-results-list.co
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SearchPage {
-  protected readonly searchFacade = inject(SearchFacade);
+  private readonly searchFacade = inject(SearchFacade);
   private readonly imagePreviewDialog = inject(ImagePreviewDialogService);
 
-  protected readonly results = toSignal(this.searchFacade.results$, {
-    initialValue: [] as SearchResult[],
-  });
-  protected readonly status = toSignal(this.searchFacade.status$, { initialValue: 'idle' });
-  protected readonly error = toSignal(this.searchFacade.error$, { initialValue: null });
-  protected readonly activeQuery = toSignal(this.searchFacade.activeQuery$, {
-    initialValue: null,
-  });
-  protected readonly hasMoreResults = toSignal(this.searchFacade.hasMoreResults$, {
-    initialValue: false,
-  });
-  protected readonly isLoadingMore = toSignal(this.searchFacade.isLoadingMore$, {
-    initialValue: false,
-  });
-  protected readonly isLoadingMoreError = toSignal(this.searchFacade.isLoadingMoreError$, {
-    initialValue: false,
+  protected readonly viewModel = toSignal(this.searchFacade.viewModel$, {
+    initialValue: {
+      results: [],
+      status: 'idle',
+      error: null,
+      activeQuery: null,
+      hasMoreResults: false,
+      isLoadingMore: false,
+      isLoadingMoreError: false,
+    } satisfies SearchViewModel,
   });
 
   protected onRetry(): void {
