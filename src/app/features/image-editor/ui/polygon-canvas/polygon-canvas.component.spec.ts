@@ -10,9 +10,8 @@ class FakeResizeObserver {
     this.callback([{ contentRect } as ResizeObserverEntry], this as unknown as ResizeObserver);
   }
 
-  disconnect(): void {
-    // no-op fake: nothing to release
-  }
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  disconnect(): void {}
 }
 
 function firePointer(element: Element, type: string, offsetX: number, offsetY: number): void {
@@ -252,7 +251,7 @@ describe('PolygonCanvas', () => {
     fixture.detectChanges();
 
     expect(rotatedSpy).toHaveBeenCalled();
-    expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo((Math.PI * 2) - (Math.PI / 12), 12);
+    expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo(Math.PI * 2 - Math.PI / 12, 12);
     expect(fixture.nativeElement.textContent).toContain('Polygon rotated 15° counterclockwise.');
   });
 

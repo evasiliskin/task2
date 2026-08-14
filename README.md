@@ -1,7 +1,6 @@
 # Frontend Screening Assignment
 
-An Angular application built for a Frontend Team Lead screening assignment: a
-typeahead image search backed by [Openverse](https://openverse.org), with an
+An Angular application to search backed by [Openverse](https://openverse.org), with an
 NgRx-backed search history, and a Canvas-based polygon editor for annotating
 the selected image.
 
@@ -71,8 +70,8 @@ testing, performance, canvas, accessibility, code review).
 
 - `query-history` reacts to `search`'s `[Search API] Load Results Success`
   action via its own effect (only records a query when it's page 1 and
-  `resultCount > 0`, deduped against the most recent entry) — a
-  one-directional dependency on an action _shape_, not a facade import.
+  `resultCount > 0`) — a one-directional dependency on an action _shape_, not
+  a facade import.
 - `search-page` calls `image-editor.facade.open(result)` to launch the dialog
   after a result is selected. The dialog receives only a plain
   `{ imageId, imageUrl, title }` input — it has no knowledge of Openverse,
@@ -81,31 +80,38 @@ testing, performance, canvas, accessibility, code review).
 ## Search & pagination
 
 - Every keystroke updates a local signal (typing never waits on the store)
-  and dispatches `[Search Input] Query Typed`. An effect pipes
-  `debounceTime → map(normalizeSearchQuery) → distinctUntilChanged → filter(isMeaningfulQuery) → switchMap(api call)`;
-  `switchMap` cancels obsolete in-flight requests when a newer meaningful
-  query arrives.
+  and dispatches `[Search Page] Query Typed`. An effect pipes
+  `debounceTime → map(normalizeSearchQuery) → distinctUntilChanged`, then maps
+  the result to either a `searchRequested` or a `queryCleared` action
+  depending on `isMeaningfulQuery`. The HTTP call itself lives in a separate
+  `performSearch$` effect that reacts to `searchRequested` via `switchMap`,
+  which cancels obsolete in-flight requests when a newer meaningful query
+  arrives.
 - The CDK virtual-scroll list's near-end trigger dispatches
-  `[Search Results] Next Page Requested`. Its effect uses `exhaustMap`
+  `[Search Page] Next Page Requested`. Its effect uses `exhaustMap`
   (not `switchMap`/`concatMap`), guarded by a `withLatestFrom` check against
   the current `page`/`status`, so a second trigger while a page is already
   in flight is dropped.
 - Results are `@ngrx/entity`-adapted (`upsertMany`, keyed by Openverse's
   stable `id`), which also makes duplicate IDs across pages self-healing.
-- `SearchResultsCache` is a small capped in-memory `Map<"query|page", Result[]>`
-  consulted inside the effect before hitting the network — session-scoped,
-  no TTL (no `localStorage`/IndexedDB layer; see Limitations below).
+- `SearchResultsCache` is an in-memory LRU cache (`Map<"query|page", Result[]>`,
+  capped at 30 entries, 5-minute TTL) consulted inside the effect before
+  hitting the network — session-scoped, no `localStorage`/IndexedDB layer;
+  see Limitations below.
 - Empty/meaningless queries dispatch a `queryCleared` action that resets
   results and status to `idle` without calling the API or recording history.
-- A failed request dispatches a normalized, user-safe error message; `status`
+- The HTTP error interceptor retries `429`/`5xx`/network-error responses
+  (up to 2 attempts, exponential backoff) before giving up. A request that
+  still fails dispatches a normalized, user-safe error message; `status`
   becomes `'error'` and renders via a dedicated error-state component with a
   retry action. Failed requests are not cached.
 
 ## Query history & suggestions
 
 Only _meaningful_ queries that actually returned results are recorded
-(page 1, `resultCount > 0`, deduped against the most recent entry), keyed by
-normalized query text via `@ngrx/entity`. `suggestionsFor()` breaks both the
+(page 1, `resultCount > 0`), keyed by normalized query text via
+`@ngrx/entity`'s `upsertOne` — re-recording an existing canonical query
+updates that entry instead of duplicating it. `suggestionsFor()` breaks both the
 typed input and each history entry into words and matches when every typed
 word is a prefix of some word in the historical entry — so "mountain lake"
 suggests a past "lake mountain view" query, not just exact substring matches.
@@ -141,7 +147,15 @@ center _is_ `position`, so there's no separate centroid recomputation).
 Dragging is a single field update to `position`. Repeated edits don't
 accumulate floating-point drift the way mutating absolute vertex coordinates
 repeatedly would. One function composes the renderable/hit-testable shape:
-`getWorldPoints(polygon) = polygon.points.map(p => addPoints(rotatePoint(p, polygon.rotationRadians), polygon.position))`.
+
+`getWorldPoints(polygon, aspectRatio) = polygon.points.map(p =>
+addPoints(rotatePointAspectCorrected(p, polygon.rotationRadians, aspectRatio), polygon.position))`
+
+The aspect correction is what keeps rotation rigid. Substituting `px = x·W`,
+`py = y·H` and `aspectRatio = W/H` into `rotatePointAspectCorrected` reduces it
+to `px' = px·cos − py·sin`, `py' = px·sin + py·cos` — an exact rotation in pixel
+space. Without it, rotating a shape stored in normalized coordinates would shear
+it on any non-square image.
 
 ### Coordinate systems
 
@@ -191,13 +205,16 @@ navigation within a session, but reset on a full page reload.
 
 - No `localStorage` persistence — history and polygons reset on page reload
   (explicit scope decision).
-- One polygon per image, not multiple (the assignment consistently says "the
-  polygon" / "a polygon", singular).
+- One polygon per image, not multiple — a deliberate, current limitation (the
+  assignment consistently says "the polygon" / "a polygon", singular).
 - Free-hand polygon drawing has no full keyboard-only equivalent; editing an
   already-drawn polygon (move/rotate/delete) does.
 - Openverse's anonymous rate limit is not published as a hard number; the
-  HTTP error interceptor normalizes a 429/5xx into the existing error-state
-  UI rather than implementing bespoke retry/backoff.
+  HTTP error interceptor retries `429`/`5xx` responses with exponential
+  backoff before normalizing a still-failing request into the existing
+  error-state UI.
+- Query history is capped at 50 entries; recording a 51st evicts the
+  least-recently-used entry.
 
 ## Testing strategy
 
