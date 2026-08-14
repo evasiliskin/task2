@@ -1,7 +1,9 @@
 <section class="search-page" aria-label="Image search">
   <app-search-input />
 
-  @if (status() === 'loading') {
+  @if (status() === 'idle') {
+    <p class="search-page__idle">Start typing to search millions of openly-licensed images.</p>
+  } @else if (status() === 'loading') {
     <div class="search-page__loading" role="status" aria-live="polite">
       <nz-spin nzSimple />
       <span>Searching…</span>

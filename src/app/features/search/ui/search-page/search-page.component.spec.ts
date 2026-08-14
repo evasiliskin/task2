@@ -162,6 +162,14 @@ describe('SearchPage', () => {
     expect(facade.loadNextPage).toHaveBeenCalled();
   });
 
+  it('should invite the user to start typing, when no search is active', () => {
+    configure({ status$: of('idle'), results$: of([]) });
+    const fixture = TestBed.createComponent(SearchPage);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Start typing to search');
+  });
+
   it('opens the image editor dialog via the facade, when a result is selected', () => {
     const result: SearchResult = {
       id: '1',

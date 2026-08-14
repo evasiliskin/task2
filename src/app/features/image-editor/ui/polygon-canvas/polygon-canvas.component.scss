@@ -63,7 +63,7 @@
   &__unavailable {
     margin: 0;
     font-size: 13px;
-    color: var(--app-color-error);
+    color: var(--app-color-danger);
   }
 
   &__image-status {
@@ -72,7 +72,7 @@
     color: var(--app-color-text-secondary);
 
     &--error {
-      color: var(--app-color-error);
+      color: var(--app-color-danger);
     }
   }
 }

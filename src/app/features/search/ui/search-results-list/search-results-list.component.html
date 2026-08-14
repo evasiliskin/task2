@@ -1,6 +1,8 @@
 <div class="search-results-list">
   <cdk-virtual-scroll-viewport
     [itemSize]="rowHeightPx"
+    [minBufferPx]="rowHeightPx * 6"
+    [maxBufferPx]="rowHeightPx * 12"
     class="search-results-list__viewport"
     (scrolledIndexChange)="onScrolledIndexChange($event)"
   >

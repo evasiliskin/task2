@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 
 @Component({
@@ -10,4 +10,8 @@ import { NzEmptyModule } from 'ng-zorro-antd/empty';
 })
 export class SearchEmptyState {
   readonly query = input.required<string>();
+
+  protected readonly message = computed(
+    () => `No results for “${this.query()}”. Try a different search.`,
+  );
 }
