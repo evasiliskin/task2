@@ -20,4 +20,17 @@ describe('POLYGON_ID', () => {
 
     expect(TestBed.inject(POLYGON_ID)()).toBe('fixed-id');
   });
+
+  it('should still produce a unique id, when crypto.randomUUID is unavailable', () => {
+    const original = globalThis.crypto;
+    Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
+
+    try {
+      const factory = TestBed.inject(POLYGON_ID);
+      expect(factory()).not.toBe(factory());
+      expect(factory()).toMatch(/\S/);
+    } finally {
+      Object.defineProperty(globalThis, 'crypto', { value: original, configurable: true });
+    }
+  });
 });

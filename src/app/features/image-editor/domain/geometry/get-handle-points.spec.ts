@@ -46,6 +46,29 @@ describe('getRotationHandlePixel', () => {
     expect(handle.x).toBeCloseTo(200 + 40 + ROTATION_HANDLE_OFFSET_PX, 6);
     expect(handle.y).toBeCloseTo(200, 6);
   });
+
+  it('should place the handle below the shape, when the polygon sits against the top edge', () => {
+    const polygon: Polygon = {
+      id: 'p1',
+      imageId: 'i1',
+      points: [
+        { x: -0.1, y: -0.05 },
+        { x: 0.1, y: -0.05 },
+        { x: 0, y: 0.05 },
+      ],
+      position: { x: 0.5, y: 0.01 },
+      rotationRadians: 0,
+      scale: 1,
+      createdAt: 0,
+    };
+    const boxSize = { width: 400, height: 400 };
+
+    const handle = getRotationHandlePixel(polygon, boxSize);
+    const bodyBottomPx = (0.01 + 0.05) * 400;
+
+    expect(handle.y).toBeGreaterThan(bodyBottomPx);
+    expect(handle.y).toBeLessThanOrEqual(boxSize.height);
+  });
 });
 
 describe('getScaleHandlePixels', () => {
