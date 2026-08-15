@@ -456,6 +456,40 @@ describe('PolygonCanvas', () => {
     expect(emitted).toEqual([]);
   });
 
+  it('should release a gesture, when the pointer is released outside the canvas', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
+    const selectedSpy = vi.fn();
+    fixture.componentInstance.polygonSelected.subscribe(selectedSpy);
+    const canvas = canvasElement(fixture);
+
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, clientY: 200 }));
+    globalThis.dispatchEvent(new PointerEvent('pointerup', { clientX: 400, clientY: 400 }));
+
+    // A click on empty canvas only clears the selection if the stuck gesture from the
+    // pointerup-outside-canvas above was actually released; otherwise onPointerDown's
+    // `if (this.activeGesture) return;` guard swallows every subsequent pointerdown.
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 1, clientY: 1 }));
+
+    expect(selectedSpy).toHaveBeenCalledWith(null);
+  });
+
+  it('should not release pointer capture, when the canvas does not hold it', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
+    const canvas = canvasElement(fixture);
+    const release = vi.fn();
+    canvas.hasPointerCapture = vi.fn(() => false);
+    canvas.releasePointerCapture = release;
+
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, clientY: 200 }));
+    canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: 200, clientY: 200 }));
+
+    expect(release).not.toHaveBeenCalled();
+  });
+
   it('should emit polygonSelected with the next polygon id, when Next is clicked', () => {
     const first = squarePolygon('p1');
     const second = squarePolygon('p2');

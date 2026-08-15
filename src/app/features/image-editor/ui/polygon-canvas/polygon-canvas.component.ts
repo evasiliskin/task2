@@ -16,7 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { fromEvent, merge } from 'rxjs';
-import { take, takeUntil } from 'rxjs/operators';
+import { map, share, take, takeUntil } from 'rxjs/operators';
 import { CanvasBoxSize, PixelPoint } from '../../domain/geometry/coordinate-mapping.model';
 import { MIN_POLYGON_POINTS } from '../../domain/geometry/create-polygon-from-points';
 import { toNormalizedPoint } from '../../domain/geometry/to-normalized-point';
@@ -243,7 +243,10 @@ export class PolygonCanvas {
       fromEvent<PointerEvent>(canvas, 'pointerup'),
       fromEvent<PointerEvent>(canvas, 'pointercancel'),
       fromEvent<PointerEvent>(canvas, 'lostpointercapture'),
-    ).pipe(take(1));
+      fromEvent<PointerEvent>(globalThis, 'pointerup'),
+      fromEvent<PointerEvent>(globalThis, 'pointercancel'),
+      fromEvent<Event>(globalThis, 'blur').pipe(map(() => null)),
+    ).pipe(take(1), share());
 
     fromEvent<PointerEvent>(canvas, 'pointermove')
       .pipe(takeUntil(gestureEnd$), takeUntilDestroyed(this.destroyRef))
@@ -262,7 +265,7 @@ export class PolygonCanvas {
 
     const boxSize = this.boxSize();
     if (boxSize.width <= 0 || boxSize.height <= 0) {
-      this.abortGesture(event);
+      this.abortGesture(event.pointerId);
       return;
     }
 
@@ -276,19 +279,16 @@ export class PolygonCanvas {
     );
   }
 
-  private endGesture(event: PointerEvent): void {
+  private endGesture(event: PointerEvent | null): void {
     const activeGesture = this.activeGesture;
     if (!activeGesture) {
       return;
     }
 
     const finalPolygon = this.draftPolygon();
-    if (finalPolygon && event.type === 'pointerup') {
+    if (finalPolygon && event?.type === 'pointerup') {
       if (activeGesture.kind === 'drag') {
-        this.polygonMoved.emit({
-          polygonId: finalPolygon.id,
-          position: finalPolygon.position,
-        });
+        this.polygonMoved.emit({ polygonId: finalPolygon.id, position: finalPolygon.position });
       } else if (activeGesture.kind === 'rotate') {
         this.polygonRotated.emit({
           polygonId: finalPolygon.id,
@@ -299,13 +299,25 @@ export class PolygonCanvas {
       }
     }
 
-    this.abortGesture(event);
+    this.abortGesture(event?.pointerId ?? null);
   }
 
-  private abortGesture(event: PointerEvent): void {
+  /**
+   * `releasePointerCapture` throws `NotFoundError` when the pointer is no longer active, which
+   * is the normal state after a touch `pointerup`. Only release capture we actually hold.
+   */
+  private abortGesture(pointerId: number | null): void {
     this.activeGesture = null;
     this.draftPolygon.set(null);
-    this.canvasEl().nativeElement.releasePointerCapture?.(event.pointerId);
+
+    if (pointerId === null) {
+      return;
+    }
+
+    const canvas = this.canvasEl().nativeElement;
+    if (canvas.hasPointerCapture?.(pointerId)) {
+      canvas.releasePointerCapture(pointerId);
+    }
   }
 
   protected onCanvasDoubleClick(): void {
