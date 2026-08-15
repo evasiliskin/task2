@@ -23,7 +23,7 @@ describe('SearchResultsCache', () => {
     expect(cache.get('cats', 1)).toBe(page);
   });
 
-  it('should treat differently-punctuated queries as distinct entries, when they kebab-case identically', () => {
+  it('should treat differently-punctuated queries as distinct entries, when their canonical forms differ', () => {
     TestBed.configureTestingModule({});
     const cache = TestBed.inject(SearchResultsCache);
     const catDogSpace: MappedSearchPage = { results: [], totalCount: 0, pageCount: 0 };
@@ -118,5 +118,17 @@ describe('SearchResultsCache', () => {
     now = CACHE_TTL_MS;
 
     expect(cache.get('cats', 1)).toBeUndefined();
+  });
+
+  it('should keep punctuation-only variants distinct, when the canonical queries differ', () => {
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
+    const pageA: MappedSearchPage = { results: [], totalCount: 0, pageCount: 0 };
+    const pageB: MappedSearchPage = { results: [], totalCount: 0, pageCount: 0 };
+    cache.set('cat-dog', 1, pageA);
+    cache.set('cat dog', 1, pageB);
+
+    expect(cache.get('cat-dog', 1)).toEqual(pageA);
+    expect(cache.get('cat dog', 1)).toEqual(pageB);
   });
 });
