@@ -29,4 +29,13 @@ describe('App', () => {
       'Image Search',
     );
   });
+
+  it('should render a skip link targeting the main region, when the shell renders', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const link = fixture.nativeElement.querySelector('a.skip-link');
+
+    expect(link?.getAttribute('href')).toBe('#main-content');
+  });
 });

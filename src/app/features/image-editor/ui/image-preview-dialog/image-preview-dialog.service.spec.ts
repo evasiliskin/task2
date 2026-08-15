@@ -108,14 +108,15 @@ describe('ImagePreviewDialogService', () => {
     expect(titleEl.id).toBe(labelledBy);
   });
 
-  it('throws in dev mode, when labelDialog runs without the expected dialog markup', () => {
+  it('should log a diagnostic and leave the dialog usable, when the expected title element is missing', () => {
     const serviceWithPrivateAccess = service as unknown as {
       labelDialog(modalRef: { getElement(): HTMLElement }): void;
     };
     const emptyModalRef = { getElement: () => document.createElement('div') };
+    const labelDialogWithMissingTitle = () => serviceWithPrivateAccess.labelDialog(emptyModalRef);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    expect(() => serviceWithPrivateAccess.labelDialog(emptyModalRef)).toThrow(
-      'Image preview dialog markup changed: expected [role="dialog"] with .ant-modal-title.',
-    );
+    expect(() => labelDialogWithMissingTitle()).not.toThrow();
+    expect(error).toHaveBeenCalled();
   });
 });

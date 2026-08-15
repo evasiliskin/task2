@@ -34,6 +34,20 @@ describe('SearchResultsCache', () => {
     expect(cache.get('cat-dog', 1)).toBe(catDogHyphen);
   });
 
+  it('should serve the cached page, when the same query is requested with different casing', () => {
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
+    cache.set('Cats', 1, page);
+    expect(cache.get('cats', 1)).toBe(page);
+  });
+
+  it('should still treat different queries as distinct entries, when they differ beyond casing', () => {
+    TestBed.configureTestingModule({});
+    const cache = TestBed.inject(SearchResultsCache);
+    cache.set('cats', 1, page);
+    expect(cache.get('dogs', 1)).toBeUndefined();
+  });
+
   it('should treat different pages of the same query as distinct entries, when caching multiple pages', () => {
     TestBed.configureTestingModule({});
     const cache = TestBed.inject(SearchResultsCache);

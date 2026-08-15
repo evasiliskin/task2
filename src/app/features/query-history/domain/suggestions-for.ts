@@ -9,18 +9,19 @@ export function suggestionsFor(
   limit: number = DEFAULT_SUGGESTION_LIMIT,
 ): string[] {
   const canonicalInput = toCanonicalQuery(input);
+  const byRecency = [...history].sort((a, b) => b.lastUsedAt - a.lastUsedAt);
+
   if (!canonicalInput) {
-    return [];
+    return byRecency.slice(0, limit).map((entry) => entry.query);
   }
 
   const inputWords = canonicalInput.split(' ');
 
-  return history
+  return byRecency
     .filter((entry) => entry.canonicalQuery !== canonicalInput)
     .filter((entry) =>
       inputWords.every((word) => entry.words.some((entryWord) => entryWord.startsWith(word))),
     )
-    .sort((a, b) => b.lastUsedAt - a.lastUsedAt)
     .slice(0, limit)
     .map((entry) => entry.query);
 }

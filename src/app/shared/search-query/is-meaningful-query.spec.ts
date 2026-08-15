@@ -13,4 +13,12 @@ describe('isMeaningfulQuery', () => {
     expect(isMeaningfulQuery('ab')).toBe(true);
     expect(isMeaningfulQuery('cats')).toBe(true);
   });
+
+  it('should accept a single non-ASCII character, when a CJK query is typed', () => {
+    expect(isMeaningfulQuery('猫')).toBe(true);
+  });
+
+  it('should still reject a single ASCII character, when one letter is typed', () => {
+    expect(isMeaningfulQuery('a')).toBe(false);
+  });
 });

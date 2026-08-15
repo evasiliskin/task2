@@ -55,7 +55,7 @@ export class ImagePreviewDialogService {
 
     if (!titleEl) {
       if (isDevMode()) {
-        throw new Error(
+        console.error(
           'Image preview dialog markup changed: expected [role="dialog"] with .ant-modal-title.',
         );
       }

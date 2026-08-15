@@ -14,11 +14,30 @@ class FakePolygonCanvas {
   readonly imageAlt = input.required<string>();
   readonly imageWidth = input(0);
   readonly imageHeight = input(0);
-  readonly polygon = input<Polygon | null>(null);
+  readonly polygons = input.required<readonly Polygon[]>();
+  readonly selectedPolygon = input<Polygon | null>(null);
   readonly polygonDrawn = output<readonly NormalizedPoint[]>();
-  readonly polygonMoved = output<NormalizedPoint>();
-  readonly polygonRotated = output<number>();
-  readonly polygonDeleted = output<void>();
+  readonly polygonMoved = output<{ polygonId: string; position: NormalizedPoint }>();
+  readonly polygonRotated = output<{ polygonId: string; rotationRadians: number }>();
+  readonly polygonScaled = output<{ polygonId: string; scale: number }>();
+  readonly polygonDeleted = output<string>();
+  readonly polygonSelected = output<string | null>();
+}
+
+function squarePolygon(id: string): Polygon {
+  return {
+    id,
+    imageId: 'image-1',
+    position: { x: 0.5, y: 0.5 },
+    rotationRadians: 0,
+    scale: 1,
+    points: [
+      { x: -0.1, y: -0.1 },
+      { x: 0.1, y: -0.1 },
+      { x: 0.1, y: 0.1 },
+      { x: -0.1, y: 0.1 },
+    ],
+  };
 }
 
 describe('ImagePreviewDialog', () => {
@@ -30,13 +49,18 @@ describe('ImagePreviewDialog', () => {
     height: 900,
   };
 
-  function configure(polygon: Polygon | null = null) {
+  function renderDialog(
+    options: { polygons?: readonly Polygon[]; selectedPolygon?: Polygon | null } = {},
+  ) {
     const facade = {
-      polygonFor: vi.fn().mockReturnValue(signal(polygon)),
+      polygonsFor: vi.fn().mockReturnValue(signal(options.polygons ?? [])),
+      selectedPolygonFor: vi.fn().mockReturnValue(signal(options.selectedPolygon ?? null)),
       createPolygon: vi.fn(),
       movePolygon: vi.fn(),
       rotatePolygon: vi.fn(),
+      scalePolygon: vi.fn(),
       deletePolygon: vi.fn(),
+      selectPolygon: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -47,73 +71,99 @@ describe('ImagePreviewDialog', () => {
       ],
     }).overrideComponent(ImagePreviewDialog, { set: { imports: [FakePolygonCanvas] } });
 
-    return facade;
-  }
-
-  it('should pass the target image and the polygon from the facade down to the canvas', () => {
-    const polygon = { id: 'image-1' } as unknown as Polygon;
-    configure(polygon);
     const fixture = TestBed.createComponent(ImagePreviewDialog);
     fixture.detectChanges();
 
-    const canvas = fixture.debugElement.query(By.directive(FakePolygonCanvas))
+    return { fixture, facade };
+  }
+
+  function canvasOf(fixture: ReturnType<typeof renderDialog>['fixture']) {
+    return fixture.debugElement.query(By.directive(FakePolygonCanvas))
       .componentInstance as FakePolygonCanvas;
+  }
+
+  it('should pass the target image details down to the canvas', () => {
+    const { fixture } = renderDialog();
+
+    const canvas = canvasOf(fixture);
 
     expect(canvas.imageUrl()).toBe(target.imageUrl);
     expect(canvas.imageAlt()).toBe(target.title);
-    expect(canvas.polygon()).toEqual(polygon);
+    expect(canvas.imageWidth()).toBe(target.width);
+    expect(canvas.imageHeight()).toBe(target.height);
+  });
+
+  it('should pass every polygon of the target image to the canvas, when the image has two', () => {
+    const { fixture } = renderDialog({ polygons: [squarePolygon('p1'), squarePolygon('p2')] });
+
+    expect(canvasOf(fixture).polygons()).toHaveLength(2);
+  });
+
+  it('should pass the selected polygon from the facade down to the canvas', () => {
+    const selectedPolygon = squarePolygon('p1');
+    const { fixture } = renderDialog({ polygons: [selectedPolygon], selectedPolygon });
+
+    expect(canvasOf(fixture).selectedPolygon()).toEqual(selectedPolygon);
   });
 
   it('should create a polygon via the facade, when the canvas emits polygonDrawn', () => {
-    const facade = configure();
-    const fixture = TestBed.createComponent(ImagePreviewDialog);
-    fixture.detectChanges();
-
-    const canvas = fixture.debugElement.query(By.directive(FakePolygonCanvas))
-      .componentInstance as FakePolygonCanvas;
+    const { fixture, facade } = renderDialog();
     const points: NormalizedPoint[] = [
       { x: 0.1, y: 0.1 },
       { x: 0.2, y: 0.1 },
       { x: 0.15, y: 0.2 },
     ];
-    canvas.polygonDrawn.emit(points);
+
+    canvasOf(fixture).polygonDrawn.emit(points);
 
     expect(facade.createPolygon).toHaveBeenCalledWith(points, 'image-1');
   });
 
   it('should move the polygon via the facade, when the canvas emits polygonMoved', () => {
-    const facade = configure();
-    const fixture = TestBed.createComponent(ImagePreviewDialog);
-    fixture.detectChanges();
+    const { fixture, facade } = renderDialog();
 
-    const canvas = fixture.debugElement.query(By.directive(FakePolygonCanvas))
-      .componentInstance as FakePolygonCanvas;
-    canvas.polygonMoved.emit({ x: 0.4, y: 0.4 });
+    canvasOf(fixture).polygonMoved.emit({ polygonId: 'p1', position: { x: 0.4, y: 0.4 } });
 
-    expect(facade.movePolygon).toHaveBeenCalledWith('image-1', { x: 0.4, y: 0.4 });
+    expect(facade.movePolygon).toHaveBeenCalledWith('p1', { x: 0.4, y: 0.4 });
   });
 
   it('should rotate the polygon via the facade, when the canvas emits polygonRotated', () => {
-    const facade = configure();
-    const fixture = TestBed.createComponent(ImagePreviewDialog);
-    fixture.detectChanges();
+    const { fixture, facade } = renderDialog();
 
-    const canvas = fixture.debugElement.query(By.directive(FakePolygonCanvas))
-      .componentInstance as FakePolygonCanvas;
-    canvas.polygonRotated.emit(Math.PI / 4);
+    canvasOf(fixture).polygonRotated.emit({ polygonId: 'p1', rotationRadians: Math.PI / 4 });
 
-    expect(facade.rotatePolygon).toHaveBeenCalledWith('image-1', Math.PI / 4);
+    expect(facade.rotatePolygon).toHaveBeenCalledWith('p1', Math.PI / 4);
+  });
+
+  it('should scale the polygon via the facade, when the canvas emits polygonScaled', () => {
+    const { fixture, facade } = renderDialog();
+
+    canvasOf(fixture).polygonScaled.emit({ polygonId: 'p1', scale: 2 });
+
+    expect(facade.scalePolygon).toHaveBeenCalledWith('p1', 2);
   });
 
   it('should delete the polygon via the facade, when the canvas emits polygonDeleted', () => {
-    const facade = configure();
-    const fixture = TestBed.createComponent(ImagePreviewDialog);
-    fixture.detectChanges();
+    const { fixture, facade } = renderDialog();
 
-    const canvas = fixture.debugElement.query(By.directive(FakePolygonCanvas))
-      .componentInstance as FakePolygonCanvas;
-    canvas.polygonDeleted.emit();
+    canvasOf(fixture).polygonDeleted.emit('p1');
 
-    expect(facade.deletePolygon).toHaveBeenCalledWith('image-1');
+    expect(facade.deletePolygon).toHaveBeenCalledWith('p1');
+  });
+
+  it('should select the polygon via the facade, when the canvas emits polygonSelected', () => {
+    const { fixture, facade } = renderDialog();
+
+    canvasOf(fixture).polygonSelected.emit('p1');
+
+    expect(facade.selectPolygon).toHaveBeenCalledWith('p1');
+  });
+
+  it('should deselect the polygon via the facade, when the canvas emits polygonSelected with null', () => {
+    const { fixture, facade } = renderDialog();
+
+    canvasOf(fixture).polygonSelected.emit(null);
+
+    expect(facade.selectPolygon).toHaveBeenCalledWith(null);
   });
 });

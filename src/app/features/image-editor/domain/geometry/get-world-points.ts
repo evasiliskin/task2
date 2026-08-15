@@ -9,10 +9,14 @@ export function toWorldPoints(
   const cos = Math.cos(polygon.rotationRadians);
   const sin = Math.sin(polygon.rotationRadians);
 
-  return points.map((point) => ({
-    x: point.x * cos - (point.y * sin) / aspectRatio + polygon.position.x,
-    y: point.x * aspectRatio * sin + point.y * cos + polygon.position.y,
-  }));
+  return points.map((point) => {
+    const x = point.x * polygon.scale;
+    const y = point.y * polygon.scale;
+    return {
+      x: x * cos - (y * sin) / aspectRatio + polygon.position.x,
+      y: x * aspectRatio * sin + y * cos + polygon.position.y,
+    };
+  });
 }
 
 export function getWorldPoints(polygon: Polygon, aspectRatio: number): NormalizedPoint[] {

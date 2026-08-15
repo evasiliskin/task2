@@ -1,6 +1,7 @@
 import { NormalizedPoint } from '../domain/normalized-point.model';
 import { Polygon } from '../domain/polygon.model';
 import { CanvasBoxSize, PixelPoint } from '../domain/geometry/coordinate-mapping.model';
+import { MAX_POLYGON_SCALE } from '../domain/geometry/clamp-polygon-scale';
 import {
   KEYBOARD_NUDGE_STEP,
   KEYBOARD_ROTATION_STEP_RADIANS,
@@ -20,6 +21,7 @@ describe('PolygonInteractionController', () => {
     ],
     position: { x: 0.5, y: 0.5 },
     rotationRadians: 0,
+    scale: 1,
   };
 
   describe('hitTestBody', () => {
@@ -37,7 +39,7 @@ describe('PolygonInteractionController', () => {
   describe('hitTestRotationHandle', () => {
     it('should return true, when the pointer is within the hit radius of the rotation handle', () => {
       const controller = new PolygonInteractionController();
-      expect(controller.hitTestRotationHandle(square, { x: 50, y: 30 }, boxSize)).toBe(true);
+      expect(controller.hitTestRotationHandle(square, { x: 50, y: 15 }, boxSize)).toBe(true);
     });
 
     it('should return false, when the pointer is far from the rotation handle', () => {
@@ -155,5 +157,70 @@ describe('PolygonInteractionController', () => {
       expect(polygon.rotationRadians).toBeGreaterThanOrEqual(0);
       expect(polygon.rotationRadians).toBeLessThan(Math.PI * 2);
     });
+  });
+});
+
+describe('PolygonInteractionController — scaling', () => {
+  const BOX = { width: 400, height: 400 };
+  const controller = new PolygonInteractionController();
+
+  const square: Polygon = {
+    id: 'p1',
+    imageId: 'i1',
+    points: [
+      { x: -0.1, y: -0.1 },
+      { x: 0.1, y: -0.1 },
+      { x: 0.1, y: 0.1 },
+      { x: -0.1, y: 0.1 },
+    ],
+    position: { x: 0.5, y: 0.5 },
+    rotationRadians: 0,
+    scale: 1,
+  };
+
+  it('should report the grabbed corner index, when the pointer is on a scale handle', () => {
+    expect(controller.hitTestScaleHandle(square, { x: 160, y: 160 }, BOX)).toBe(0);
+  });
+
+  it('should report no handle, when the pointer is far from every corner', () => {
+    expect(controller.hitTestScaleHandle(square, { x: 200, y: 200 }, BOX)).toBeNull();
+  });
+
+  it('should double the scale, when the corner is dragged to twice its distance from the centroid', () => {
+    const session = controller.beginScale(square, 0, BOX);
+
+    const scaled = controller.updateScale(session, { x: 120, y: 120 }, BOX);
+
+    expect(scaled.scale).toBeCloseTo(2, 6);
+  });
+
+  it('should clamp to the maximum, when the corner is dragged far beyond the bound', () => {
+    const session = controller.beginScale(square, 0, BOX);
+
+    const scaled = controller.updateScale(session, { x: -5000, y: -5000 }, BOX);
+
+    expect(scaled.scale).toBe(MAX_POLYGON_SCALE);
+  });
+
+  it('should return the most recently created polygon, when two overlap under the pointer', () => {
+    const older = { ...square, id: 'older' };
+    const newer = { ...square, id: 'newer' };
+
+    expect(controller.hitTestTopmostBody([older, newer], { x: 200, y: 200 }, BOX)?.id).toBe(
+      'newer',
+    );
+  });
+
+  it('should return null, when the pointer is outside every polygon', () => {
+    expect(controller.hitTestTopmostBody([square], { x: 5, y: 5 }, BOX)).toBeNull();
+  });
+
+  it('should return the selected polygon, when it overlaps a later-created unselected polygon under the pointer', () => {
+    const older = { ...square, id: 'older' };
+    const newer = { ...square, id: 'newer' };
+
+    expect(controller.hitTestTopmostBody([older, newer], { x: 200, y: 200 }, BOX, older)?.id).toBe(
+      'older',
+    );
   });
 });

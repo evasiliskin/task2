@@ -3,8 +3,23 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { PixelPoint } from '../../domain/geometry/coordinate-mapping.model';
 import { Polygon } from '../../domain/polygon.model';
+import { POLYGON_CANVAS_RENDERER } from '../../rendering/polygon-renderer.token';
 import { PolygonCanvas } from './polygon-canvas.component';
+
+Object.defineProperty(PointerEvent.prototype, 'offsetX', {
+  configurable: true,
+  get(this: PointerEvent): number {
+    return this.clientX;
+  },
+});
+Object.defineProperty(PointerEvent.prototype, 'offsetY', {
+  configurable: true,
+  get(this: PointerEvent): number {
+    return this.clientY;
+  },
+});
 
 let resizeObserverInstances: FakeResizeObserver[] = [];
 
@@ -14,7 +29,7 @@ class FakeResizeObserver {
   }
 
   observe(): void {
-    this.trigger(100, 100);
+    this.trigger(400, 400);
   }
 
   trigger(width: number, height: number): void {
@@ -26,56 +41,138 @@ class FakeResizeObserver {
   disconnect(): void {}
 }
 
-function firePointer(element: Element, type: string, offsetX: number, offsetY: number): void {
-  const event = new Event(type) as unknown as PointerEvent;
-  Object.defineProperty(event, 'offsetX', { value: offsetX });
-  Object.defineProperty(event, 'offsetY', { value: offsetY });
-  Object.defineProperty(event, 'pointerId', { value: 1 });
-  element.dispatchEvent(event);
+let mediaQueryChangeListeners: (() => void)[] = [];
+
+class FakeMediaQueryList {
+  addEventListener(_type: string, listener: () => void): void {
+    mediaQueryChangeListeners.push(listener);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  removeEventListener(): void {}
+}
+
+function setDevicePixelRatio(ratio: number): void {
+  vi.stubGlobal('devicePixelRatio', ratio);
+}
+
+function squarePolygon(id: string): Polygon {
+  return {
+    id,
+    imageId: 'image-1',
+    points: [
+      { x: -0.1, y: -0.1 },
+      { x: 0.1, y: -0.1 },
+      { x: 0.1, y: 0.1 },
+      { x: -0.1, y: 0.1 },
+    ],
+    position: { x: 0.5, y: 0.5 },
+    rotationRadians: 0,
+    scale: 1,
+  };
+}
+
+function scaleHandlePixel(polygon: Polygon): PixelPoint {
+  return {
+    x: (polygon.position.x + polygon.points[0].x) * 400,
+    y: (polygon.position.y + polygon.points[0].y) * 400,
+  };
 }
 
 function fireKey(element: Element, key: string): void {
   element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
 }
 
-const square: Polygon = {
-  id: 'image-1',
-  imageId: 'image-1',
-  points: [
-    { x: -0.1, y: -0.1 },
-    { x: 0.1, y: -0.1 },
-    { x: 0.1, y: 0.1 },
-    { x: -0.1, y: 0.1 },
-  ],
-  position: { x: 0.5, y: 0.5 },
-  rotationRadians: 0,
-};
+function findButtonByText(
+  fixture: ComponentFixture<PolygonCanvas>,
+  text: string,
+): HTMLButtonElement {
+  const buttons: HTMLButtonElement[] = Array.from(
+    fixture.nativeElement.querySelectorAll('button'),
+  ) as HTMLButtonElement[];
+  const button = buttons.find((candidate) => candidate.textContent?.trim() === text);
+  if (!button) {
+    throw new Error(`Button "${text}" not found`);
+  }
+  return button;
+}
+
+function drawButton(fixture: ComponentFixture<PolygonCanvas>): HTMLButtonElement {
+  return findButtonByText(fixture, 'Draw polygon');
+}
+
+function nextButton(fixture: ComponentFixture<PolygonCanvas>): HTMLButtonElement {
+  return findButtonByText(fixture, 'Next');
+}
+
+function previousButton(fixture: ComponentFixture<PolygonCanvas>): HTMLButtonElement {
+  return findButtonByText(fixture, 'Previous');
+}
+
+function finishButton(fixture: ComponentFixture<PolygonCanvas>): HTMLButtonElement {
+  return findButtonByText(fixture, 'Finish polygon');
+}
+
+function cancelButton(fixture: ComponentFixture<PolygonCanvas>): HTMLButtonElement {
+  return findButtonByText(fixture, 'Cancel');
+}
+
+function deleteButton(fixture: ComponentFixture<PolygonCanvas>): HTMLButtonElement {
+  return findButtonByText(fixture, 'Delete polygon');
+}
+
+function canvasElement(fixture: ComponentFixture<PolygonCanvas>): HTMLCanvasElement {
+  return fixture.nativeElement.querySelector('canvas');
+}
+
+function loadImage(fixture: ComponentFixture<PolygonCanvas>): void {
+  const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
+  img.dispatchEvent(new Event('load'));
+  fixture.detectChanges();
+}
+
+function dragFrom(
+  fixture: ComponentFixture<PolygonCanvas>,
+  from: PixelPoint,
+  to: PixelPoint,
+): void {
+  const canvas = canvasElement(fixture);
+  canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: from.x, clientY: from.y }));
+  canvas.dispatchEvent(new PointerEvent('pointermove', { clientX: to.x, clientY: to.y }));
+  canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: to.x, clientY: to.y }));
+  fixture.detectChanges();
+}
 
 describe('PolygonCanvas', () => {
-  let fixture: ComponentFixture<PolygonCanvas>;
-  let canvas: HTMLElement;
   let liveAnnouncerSpy: { announce: ReturnType<typeof vi.fn> };
 
-  beforeEach(() => {
-    resizeObserverInstances = [];
-    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
-    liveAnnouncerSpy = { announce: vi.fn().mockResolvedValue(undefined) };
-
+  function renderCanvas(props: {
+    polygons: readonly Polygon[];
+    selectedPolygon: Polygon | null;
+  }): ComponentFixture<PolygonCanvas> {
     TestBed.configureTestingModule({
       imports: [PolygonCanvas],
       providers: [{ provide: LiveAnnouncer, useValue: liveAnnouncerSpy }],
     });
-    fixture = TestBed.createComponent(PolygonCanvas);
+    const fixture = TestBed.createComponent(PolygonCanvas);
     fixture.componentRef.setInput('imageUrl', 'https://example.test/image.jpg');
     fixture.componentRef.setInput('imageAlt', 'A test image');
+    fixture.componentRef.setInput('polygons', props.polygons);
+    fixture.componentRef.setInput('selectedPolygon', props.selectedPolygon);
     fixture.detectChanges();
     fixture.detectChanges();
+    return fixture;
+  }
 
-    canvas = fixture.nativeElement.querySelector('canvas');
-
-    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
-    img.dispatchEvent(new Event('load'));
-    fixture.detectChanges();
+  beforeEach(() => {
+    resizeObserverInstances = [];
+    mediaQueryChangeListeners = [];
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => new FakeMediaQueryList()),
+    );
+    liveAnnouncerSpy = { announce: vi.fn().mockResolvedValue(undefined) };
   });
 
   afterEach(() => {
@@ -83,268 +180,431 @@ describe('PolygonCanvas', () => {
   });
 
   it('should render the image with the given url and alt text', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+
     const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
     expect(img.src).toBe('https://example.test/image.jpg');
     expect(img.alt).toBe('A test image');
   });
 
-  it('should show the initial draw hint and a disabled Finish button, when no polygon exists and no points are placed', () => {
-    const finishButton: HTMLButtonElement = fixture.nativeElement.querySelectorAll('button')[0];
-    expect(fixture.nativeElement.textContent).toContain('Click the image to start drawing');
-    expect(finishButton.disabled).toBe(true);
-  });
-
-  it('should update the draw hint with the placed point count, when the canvas is clicked while drawing', () => {
-    firePointer(canvas, 'pointerdown', 20, 30);
+  it('should render intrinsic width and height attributes, when the image dimensions are known', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    fixture.componentRef.setInput('imageWidth', 1600);
+    fixture.componentRef.setInput('imageHeight', 900);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('1 point');
+    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
+    expect(img.getAttribute('width')).toBe('1600');
+    expect(img.getAttribute('height')).toBe('900');
+  });
+
+  it('should not place draw points, when draw mode has not been entered', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    const canvas = canvasElement(fixture);
+
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 10, clientY: 10 }));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('point(s) placed');
+  });
+
+  it('should disable the draw button, when the image has not loaded', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+
+    expect(drawButton(fixture).disabled).toBe(true);
+  });
+
+  it('should enter draw mode and accept points, when the draw button is clicked after the image loads', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    loadImage(fixture);
+
+    drawButton(fixture).click();
+    fixture.detectChanges();
+    canvasElement(fixture).dispatchEvent(
+      new PointerEvent('pointerdown', { clientX: 10, clientY: 10 }),
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('1 point(s) placed');
   });
 
   it('should emit polygonDrawn with the placed points, when Finish polygon is clicked after 3+ points', () => {
-    const drawnSpy = vi.fn();
-    fixture.componentInstance.polygonDrawn.subscribe(drawnSpy);
-
-    firePointer(canvas, 'pointerdown', 10, 10);
-    firePointer(canvas, 'pointerdown', 50, 10);
-    firePointer(canvas, 'pointerdown', 30, 50);
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    loadImage(fixture);
+    drawButton(fixture).click();
     fixture.detectChanges();
 
-    const finishButton: HTMLButtonElement = fixture.nativeElement.querySelectorAll('button')[0];
-    expect(finishButton.disabled).toBe(false);
-    finishButton.click();
+    const drawnSpy = vi.fn();
+    fixture.componentInstance.polygonDrawn.subscribe(drawnSpy);
+    const canvas = canvasElement(fixture);
+
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 10, clientY: 10 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 50, clientY: 10 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 30, clientY: 50 }));
+    fixture.detectChanges();
+
+    expect(finishButton(fixture).disabled).toBe(false);
+    finishButton(fixture).click();
 
     expect(drawnSpy).toHaveBeenCalledWith([
-      { x: 0.1, y: 0.1 },
-      { x: 0.5, y: 0.1 },
-      { x: 0.3, y: 0.5 },
+      { x: 0.025, y: 0.025 },
+      { x: 0.125, y: 0.025 },
+      { x: 0.075, y: 0.125 },
     ]);
   });
 
-  it('should revert to the initial hint, when Clear points is clicked after placing points', () => {
-    firePointer(canvas, 'pointerdown', 10, 10);
+  it('should revert to idle mode, when Cancel is clicked after placing points', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    loadImage(fixture);
+    drawButton(fixture).click();
     fixture.detectChanges();
 
-    const clearButton: HTMLButtonElement = fixture.nativeElement.querySelectorAll('button')[1];
-    clearButton.click();
+    canvasElement(fixture).dispatchEvent(
+      new PointerEvent('pointerdown', { clientX: 10, clientY: 10 }),
+    );
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Click the image to start drawing');
+    cancelButton(fixture).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('point(s) placed');
+    expect(drawButton(fixture)).not.toBeNull();
   });
 
   it('should finish the polygon, when clicking near the first placed vertex', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    loadImage(fixture);
+    drawButton(fixture).click();
+    fixture.detectChanges();
+
     const drawnSpy = vi.fn();
     fixture.componentInstance.polygonDrawn.subscribe(drawnSpy);
+    const canvas = canvasElement(fixture);
 
-    firePointer(canvas, 'pointerdown', 10, 10);
-    firePointer(canvas, 'pointerdown', 50, 10);
-    firePointer(canvas, 'pointerdown', 30, 50);
-    firePointer(canvas, 'pointerdown', 12, 12);
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 10, clientY: 10 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 50, clientY: 10 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 30, clientY: 50 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 12, clientY: 12 }));
     fixture.detectChanges();
 
     expect(drawnSpy).toHaveBeenCalledWith([
-      { x: 0.1, y: 0.1 },
-      { x: 0.5, y: 0.1 },
-      { x: 0.3, y: 0.5 },
+      { x: 0.025, y: 0.025 },
+      { x: 0.125, y: 0.025 },
+      { x: 0.075, y: 0.125 },
     ]);
   });
 
   it('should finish the polygon on double-click, discarding the duplicate point added by the second click', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    loadImage(fixture);
+    drawButton(fixture).click();
+    fixture.detectChanges();
+
     const drawnSpy = vi.fn();
     fixture.componentInstance.polygonDrawn.subscribe(drawnSpy);
+    const canvas = canvasElement(fixture);
 
-    firePointer(canvas, 'pointerdown', 10, 10);
-    firePointer(canvas, 'pointerdown', 50, 10);
-    firePointer(canvas, 'pointerdown', 30, 50);
-    firePointer(canvas, 'pointerdown', 30, 50);
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 10, clientY: 10 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 50, clientY: 10 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 30, clientY: 50 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 30, clientY: 50 }));
     canvas.dispatchEvent(new Event('dblclick'));
     fixture.detectChanges();
 
     expect(drawnSpy).toHaveBeenCalledWith([
-      { x: 0.1, y: 0.1 },
-      { x: 0.5, y: 0.1 },
-      { x: 0.3, y: 0.5 },
+      { x: 0.025, y: 0.025 },
+      { x: 0.125, y: 0.025 },
+      { x: 0.075, y: 0.125 },
     ]);
   });
 
-  it('should emit polygonMoved with the new position, when dragging an existing polygon body and releasing the pointer', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
+  it('should emit polygonSelected with null, when clicking empty canvas while a polygon is selected', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
+    const emitted: (string | null)[] = [];
+    fixture.componentInstance.polygonSelected.subscribe((id) => emitted.push(id));
 
+    canvasElement(fixture).dispatchEvent(
+      new PointerEvent('pointerdown', { clientX: 1, clientY: 1 }),
+    );
+
+    expect(emitted).toEqual([null]);
+  });
+
+  it('should not emit polygonSelected, when clicking empty canvas while nothing is selected', () => {
+    const fixture = renderCanvas({ polygons: [squarePolygon('p1')], selectedPolygon: null });
+    loadImage(fixture);
+    const emitted: (string | null)[] = [];
+    fixture.componentInstance.polygonSelected.subscribe((id) => emitted.push(id));
+
+    canvasElement(fixture).dispatchEvent(
+      new PointerEvent('pointerdown', { clientX: 1, clientY: 1 }),
+    );
+
+    expect(emitted).toEqual([]);
+  });
+
+  it('should emit polygonSelected with the polygon id, when clicking an unselected polygon body', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: null });
+    loadImage(fixture);
+    const emitted: (string | null)[] = [];
+    fixture.componentInstance.polygonSelected.subscribe((id) => emitted.push(id));
+
+    canvasElement(fixture).dispatchEvent(
+      new PointerEvent('pointerdown', { clientX: 200, clientY: 200 }),
+    );
+
+    expect(emitted).toEqual(['p1']);
+  });
+
+  it('should emit polygonMoved with the new position, when dragging the selected polygon body and releasing the pointer', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
     const movedSpy = vi.fn();
     fixture.componentInstance.polygonMoved.subscribe(movedSpy);
 
-    firePointer(canvas, 'pointerdown', 50, 50);
-    firePointer(canvas, 'pointermove', 60, 50);
-    firePointer(canvas, 'pointerup', 60, 50);
+    dragFrom(fixture, { x: 200, y: 200 }, { x: 210, y: 200 });
 
-    expect(movedSpy).toHaveBeenCalledWith({ x: 0.6, y: 0.5 });
+    expect(movedSpy).toHaveBeenCalledWith({ polygonId: 'p1', position: { x: 0.525, y: 0.5 } });
   });
 
   it('should emit polygonRotated with the new rotation, when dragging the rotation handle and releasing the pointer', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
     const rotatedSpy = vi.fn();
     fixture.componentInstance.polygonRotated.subscribe(rotatedSpy);
 
-    firePointer(canvas, 'pointerdown', 50, 30);
-    firePointer(canvas, 'pointermove', 70, 50);
-    firePointer(canvas, 'pointerup', 70, 50);
+    dragFrom(fixture, { x: 200, y: 132 }, { x: 300, y: 200 });
 
     expect(rotatedSpy).toHaveBeenCalledTimes(1);
-    expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo(Math.PI / 2, 9);
+    expect(rotatedSpy.mock.calls[0][0].polygonId).toBe('p1');
+    expect(rotatedSpy.mock.calls[0][0].rotationRadians).toBeCloseTo(Math.PI / 2, 6);
+  });
+
+  it('should emit polygonScaled with the polygon id, when a scale handle is dragged and released', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
+    const emitted: { polygonId: string; scale: number }[] = [];
+    fixture.componentInstance.polygonScaled.subscribe((event) => emitted.push(event));
+
+    dragFrom(fixture, scaleHandlePixel(polygon), { x: 40, y: 40 });
+
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0].polygonId).toBe('p1');
   });
 
   it('should ignore a second pointerdown and keep tracking the first gesture, when it arrives before the first gesture ends', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
     const movedSpy = vi.fn();
     fixture.componentInstance.polygonMoved.subscribe(movedSpy);
+    const canvas = canvasElement(fixture);
 
-    firePointer(canvas, 'pointerdown', 50, 50);
-    firePointer(canvas, 'pointerdown', 55, 55);
-    firePointer(canvas, 'pointermove', 60, 50);
-    firePointer(canvas, 'pointerup', 60, 50);
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, clientY: 200 }));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 205, clientY: 205 }));
+    canvas.dispatchEvent(new PointerEvent('pointermove', { clientX: 210, clientY: 200 }));
+    canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: 210, clientY: 200 }));
 
     expect(movedSpy).toHaveBeenCalledTimes(1);
-    expect(movedSpy).toHaveBeenCalledWith({ x: 0.6, y: 0.5 });
+    expect(movedSpy).toHaveBeenCalledWith({ polygonId: 'p1', position: { x: 0.525, y: 0.5 } });
   });
 
   it('should abort the gesture without throwing and without emitting, when the box size becomes zero mid-drag', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
     const movedSpy = vi.fn();
     fixture.componentInstance.polygonMoved.subscribe(movedSpy);
+    const canvas = canvasElement(fixture);
 
-    firePointer(canvas, 'pointerdown', 50, 50);
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, clientY: 200 }));
     resizeObserverInstances[0].trigger(0, 0);
     fixture.detectChanges();
 
-    expect(() => firePointer(canvas, 'pointermove', 60, 50)).not.toThrow();
+    expect(() =>
+      canvas.dispatchEvent(new PointerEvent('pointermove', { clientX: 210, clientY: 200 })),
+    ).not.toThrow();
     expect(movedSpy).not.toHaveBeenCalled();
 
-    firePointer(canvas, 'pointerup', 60, 50);
+    canvas.dispatchEvent(new PointerEvent('pointerup', { clientX: 210, clientY: 200 }));
     expect(movedSpy).not.toHaveBeenCalled();
   });
 
-  it('should hide the draw controls, when a polygon already exists', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
+  it('should end the gesture without emitting, when pointer capture is lost mid-drag', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
+    const emitted: unknown[] = [];
+    fixture.componentInstance.polygonMoved.subscribe((event) => emitted.push(event));
+    const canvas = canvasElement(fixture);
 
-    expect(fixture.nativeElement.querySelector('.polygon-canvas__draw-controls')).toBeNull();
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, clientY: 200 }));
+    canvas.dispatchEvent(new PointerEvent('lostpointercapture'));
+    canvas.dispatchEvent(new PointerEvent('pointermove', { clientX: 260, clientY: 260 }));
+
+    expect(emitted).toEqual([]);
   });
 
-  it('should clear stale draw points, when polygon input transitions from null to non-null and back to null', () => {
-    firePointer(canvas, 'pointerdown', 20, 30);
-    fixture.detectChanges();
+  it('should emit polygonSelected with the next polygon id, when Next is clicked', () => {
+    const first = squarePolygon('p1');
+    const second = squarePolygon('p2');
+    const fixture = renderCanvas({ polygons: [first, second], selectedPolygon: first });
+    loadImage(fixture);
+    const emitted: (string | null)[] = [];
+    fixture.componentInstance.polygonSelected.subscribe((id) => emitted.push(id));
 
-    expect(fixture.nativeElement.textContent).toContain('1 point');
+    nextButton(fixture).click();
 
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-
-    fixture.componentRef.setInput('polygon', null);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).toContain('Click the image to start drawing');
+    expect(emitted).toEqual(['p2']);
   });
 
-  it('should be keyboard-focusable with an accessible name describing how to start drawing, when no polygon exists yet', () => {
-    expect(canvas.getAttribute('tabindex')).toBe('0');
-    expect(canvas.getAttribute('role')).toBe('group');
-    expect(canvas.getAttribute('aria-label')).toContain('start drawing');
+  it('should emit polygonSelected with the previous polygon id, when Previous is clicked', () => {
+    const first = squarePolygon('p1');
+    const second = squarePolygon('p2');
+    const fixture = renderCanvas({ polygons: [first, second], selectedPolygon: second });
+    loadImage(fixture);
+    const emitted: (string | null)[] = [];
+    fixture.componentInstance.polygonSelected.subscribe((id) => emitted.push(id));
+
+    previousButton(fixture).click();
+
+    expect(emitted).toEqual(['p1']);
   });
 
-  it('should be keyboard-focusable with an accessible label mentioning arrow keys, when a polygon exists', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-
-    expect(canvas.getAttribute('tabindex')).toBe('0');
-    expect(canvas.getAttribute('role')).toBe('group');
-    expect(canvas.getAttribute('aria-label')).toContain('arrow keys');
-  });
-
-  it('should emit polygonMoved and announce the direction, when ArrowRight is pressed on an existing polygon', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-    const movedSpy = vi.fn();
-    fixture.componentInstance.polygonMoved.subscribe(movedSpy);
-
-    fireKey(canvas, 'ArrowRight');
-    fixture.detectChanges();
-
-    expect(movedSpy).toHaveBeenCalledWith({ x: 0.52, y: 0.5 });
-    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon moved right.');
-  });
-
-  it('should emit polygonRotated and announce the degrees, when ] is pressed on an existing polygon', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-    const rotatedSpy = vi.fn();
-    fixture.componentInstance.polygonRotated.subscribe(rotatedSpy);
-
-    fireKey(canvas, ']');
-    fixture.detectChanges();
-
-    expect(rotatedSpy).toHaveBeenCalled();
-    expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo(Math.PI / 12, 12);
-    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon rotated 15° clockwise.');
-  });
-
-  it('should emit polygonRotated in the opposite direction and announce it, when [ is pressed on an existing polygon', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-    const rotatedSpy = vi.fn();
-    fixture.componentInstance.polygonRotated.subscribe(rotatedSpy);
-
-    fireKey(canvas, '[');
-    fixture.detectChanges();
-
-    expect(rotatedSpy).toHaveBeenCalled();
-    expect(rotatedSpy.mock.calls[0][0]).toBeCloseTo(Math.PI * 2 - Math.PI / 12, 12);
-    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon rotated 15° counterclockwise.');
-  });
-
-  it('should emit polygonDeleted and announce the deletion, when Delete is pressed on an existing polygon', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
+  it('should emit polygonDeleted with the polygon id, when Delete polygon is clicked', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
     const deletedSpy = vi.fn();
     fixture.componentInstance.polygonDeleted.subscribe(deletedSpy);
 
-    fireKey(canvas, 'Delete');
+    deleteButton(fixture).click();
     fixture.detectChanges();
 
-    expect(deletedSpy).toHaveBeenCalled();
+    expect(deletedSpy).toHaveBeenCalledWith('p1');
     expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
   });
 
-  it('should announce the deletion and keep the canvas focusable, when Delete triggers a synchronous polygon removal', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
+  it('should be keyboard-focusable with an accessible name describing how to start drawing, when no polygon exists yet', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    const canvas = canvasElement(fixture);
 
-    // Simulates the real flow: polygonDeleted -> facade -> store -> selector emits null,
-    // all within the same synchronous change-detection pass.
-    fixture.componentInstance.polygonDeleted.subscribe(() => {
-      fixture.componentRef.setInput('polygon', null);
-      fixture.detectChanges();
-    });
-
-    canvas.focus();
-    fireKey(canvas, 'Delete');
-    fixture.detectChanges();
-
-    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
     expect(canvas.getAttribute('tabindex')).toBe('0');
+    expect(canvas.getAttribute('role')).toBe('group');
+    expect(canvas.getAttribute('aria-label')).toContain('Draw polygon');
   });
 
-  it('should ignore keyboard input, when no polygon exists yet', () => {
+  it('should be keyboard-focusable with an accessible label mentioning arrow keys, when a polygon is selected', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    const canvas = canvasElement(fixture);
+
+    expect(canvas.getAttribute('tabindex')).toBe('0');
+    expect(canvas.getAttribute('role')).toBe('group');
+    expect(canvas.getAttribute('aria-label')).toContain('Arrow keys');
+  });
+
+  it('should emit polygonMoved and announce the direction, when ArrowRight is pressed on the selected polygon', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
     const movedSpy = vi.fn();
     fixture.componentInstance.polygonMoved.subscribe(movedSpy);
 
-    fireKey(canvas, 'ArrowRight');
+    fireKey(canvasElement(fixture), 'ArrowRight');
+    fixture.detectChanges();
+
+    expect(movedSpy).toHaveBeenCalledWith({ polygonId: 'p1', position: { x: 0.52, y: 0.5 } });
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon moved right.');
+  });
+
+  it('should emit polygonRotated and announce the degrees, when ] is pressed on the selected polygon', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    const rotatedSpy = vi.fn();
+    fixture.componentInstance.polygonRotated.subscribe(rotatedSpy);
+
+    fireKey(canvasElement(fixture), ']');
+    fixture.detectChanges();
+
+    expect(rotatedSpy).toHaveBeenCalled();
+    expect(rotatedSpy.mock.calls[0][0].polygonId).toBe('p1');
+    expect(rotatedSpy.mock.calls[0][0].rotationRadians).toBeCloseTo(Math.PI / 12, 12);
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon rotated 15° clockwise.');
+  });
+
+  it('should emit polygonRotated in the opposite direction and announce it, when [ is pressed on the selected polygon', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    const rotatedSpy = vi.fn();
+    fixture.componentInstance.polygonRotated.subscribe(rotatedSpy);
+
+    fireKey(canvasElement(fixture), '[');
+    fixture.detectChanges();
+
+    expect(rotatedSpy).toHaveBeenCalled();
+    expect(rotatedSpy.mock.calls[0][0].rotationRadians).toBeCloseTo(Math.PI * 2 - Math.PI / 12, 12);
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon rotated 15° counterclockwise.');
+  });
+
+  it('should emit polygonScaled, when + is pressed on the selected polygon', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    const emitted: { polygonId: string; scale: number }[] = [];
+    fixture.componentInstance.polygonScaled.subscribe((event) => emitted.push(event));
+
+    canvasElement(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: '+' }));
+
+    expect(emitted[0].scale).toBeGreaterThan(1);
+    expect(emitted[0].polygonId).toBe('p1');
+  });
+
+  it('should emit polygonScaled with a smaller scale, when - is pressed on the selected polygon', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    const emitted: { polygonId: string; scale: number }[] = [];
+    fixture.componentInstance.polygonScaled.subscribe((event) => emitted.push(event));
+
+    canvasElement(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: '-' }));
+
+    expect(emitted[0].scale).toBeLessThan(1);
+  });
+
+  it('should emit polygonSelected with null, when Escape is pressed on the selected polygon', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    const emitted: (string | null)[] = [];
+    fixture.componentInstance.polygonSelected.subscribe((id) => emitted.push(id));
+
+    canvasElement(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(emitted).toEqual([null]);
+  });
+
+  it('should emit polygonDeleted and announce the deletion, when Delete is pressed on the selected polygon', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    const deletedSpy = vi.fn();
+    fixture.componentInstance.polygonDeleted.subscribe(deletedSpy);
+
+    fireKey(canvasElement(fixture), 'Delete');
+    fixture.detectChanges();
+
+    expect(deletedSpy).toHaveBeenCalledWith('p1');
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
+  });
+
+  it('should ignore keyboard input, when no polygon is selected', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    const movedSpy = vi.fn();
+    fixture.componentInstance.polygonMoved.subscribe(movedSpy);
+
+    fireKey(canvasElement(fixture), 'ArrowRight');
 
     expect(movedSpy).not.toHaveBeenCalled();
   });
@@ -358,6 +618,7 @@ describe('PolygonCanvas', () => {
       moveTo: vi.fn(),
       lineTo: vi.fn(),
       arc: vi.fn(),
+      rect: vi.fn(),
       fill: vi.fn(),
       stroke: vi.fn(),
       save: vi.fn(),
@@ -368,102 +629,126 @@ describe('PolygonCanvas', () => {
       lineWidth: 0,
     } as unknown as CanvasRenderingContext2D;
 
-    const canvasElement = canvas as HTMLCanvasElement;
-    vi.spyOn(canvasElement, 'getContext').mockReturnValue(context);
-    vi.stubGlobal('devicePixelRatio', 2);
-
-    fixture.componentRef.setInput('polygon', square);
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
+    const canvas = canvasElement(fixture);
+    vi.spyOn(canvas, 'getContext').mockReturnValue(context);
+    setDevicePixelRatio(2);
+    mediaQueryChangeListeners.forEach((listener) => listener());
     fixture.detectChanges();
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
 
-    expect(canvasElement.width).toBe(200);
-    expect(canvasElement.height).toBe(200);
+    expect(canvas.width).toBe(800);
+    expect(canvas.height).toBe(800);
     expect(setTransform).toHaveBeenCalledWith(2, 0, 0, 2, 0, 0);
 
-    const widthSpy = vi.spyOn(canvasElement, 'width', 'set');
-    firePointer(canvas, 'pointerdown', 50, 50);
-    firePointer(canvas, 'pointermove', 55, 50);
-    firePointer(canvas, 'pointermove', 60, 50);
-    fixture.detectChanges();
+    const widthSpy = vi.spyOn(canvas, 'width', 'set');
+    dragFrom(fixture, { x: 200, y: 200 }, { x: 210, y: 200 });
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
 
     expect(widthSpy).not.toHaveBeenCalled();
   });
 
+  it('should redraw at the new backing resolution, when the device pixel ratio changes', async () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    loadImage(fixture);
+    await fixture.whenStable();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    const canvas = canvasElement(fixture);
+    const before = canvas.width;
+
+    setDevicePixelRatio(2);
+    mediaQueryChangeListeners.forEach((listener) => listener());
+    await fixture.whenStable();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+    expect(canvas.width).toBeGreaterThan(before);
+  });
+
   it('should announce that the canvas is unavailable, when a 2D context cannot be obtained', async () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+    loadImage(fixture);
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Polygon drawing is unavailable');
   });
 
-  it('should emit polygonDeleted and announce it, when the visible delete button is clicked', () => {
-    fixture.componentRef.setInput('polygon', square);
-    fixture.detectChanges();
-
-    const deletedSpy = vi.fn();
-    fixture.componentInstance.polygonDeleted.subscribe(deletedSpy);
-
-    const deleteButton: HTMLButtonElement = fixture.nativeElement.querySelector(
-      '.polygon-canvas__edit-controls button',
-    );
-    expect(deleteButton).not.toBeNull();
-    deleteButton.click();
-    fixture.detectChanges();
-
-    expect(deletedSpy).toHaveBeenCalled();
-    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
-  });
-
-  it('should not render the edit controls, when no polygon exists', () => {
-    expect(fixture.nativeElement.querySelector('.polygon-canvas__edit-controls')).toBeNull();
-  });
-
-  it('should render intrinsic width and height attributes, when the image dimensions are known', () => {
-    fixture.componentRef.setInput('imageWidth', 1600);
-    fixture.componentRef.setInput('imageHeight', 900);
-    fixture.detectChanges();
-
-    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
-    expect(img.getAttribute('width')).toBe('1600');
-    expect(img.getAttribute('height')).toBe('900');
-  });
-
-  it('should show an error message and hide the draw controls, when the image fails to load', () => {
+  it('should show an error message, when the image fails to load', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
     const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
     img.dispatchEvent(new Event('error'));
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('The image could not be loaded');
-    expect(fixture.nativeElement.querySelector('.polygon-canvas__draw-controls')).toBeNull();
+    expect(drawButton(fixture).disabled).toBe(true);
   });
 
   it('should clear the loading state, when the image loads', () => {
-    const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
-    img.dispatchEvent(new Event('load'));
-    fixture.detectChanges();
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    loadImage(fixture);
 
     expect(fixture.nativeElement.textContent).not.toContain('Loading image');
   });
 
-  it('should not place draw points or commit a polygon, when the canvas receives pointerdown and dblclick after the image failed to load', () => {
+  it('should not place draw points, when the canvas receives pointerdown after the image failed to load', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
     const img: HTMLImageElement = fixture.nativeElement.querySelector('img');
     img.dispatchEvent(new Event('error'));
     fixture.detectChanges();
 
     const drawnSpy = vi.fn();
     fixture.componentInstance.polygonDrawn.subscribe(drawnSpy);
+    const canvas = canvasElement(fixture);
 
-    firePointer(canvas, 'pointerdown', 10, 10);
-    firePointer(canvas, 'pointerdown', 50, 10);
-    firePointer(canvas, 'pointerdown', 30, 50);
-    firePointer(canvas, 'pointerdown', 30, 50);
-    canvas.dispatchEvent(new Event('dblclick'));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 10, clientY: 10 }));
     fixture.detectChanges();
 
     expect(drawnSpy).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).not.toContain('point(s) placed');
+  });
+
+  it('should still render existing polygons underneath the draw preview, when entering draw mode with polygons already present', async () => {
+    const fakeContext = {
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      closePath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      arc: vi.fn(),
+      rect: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+      setTransform: vi.fn(),
+      strokeStyle: '',
+      fillStyle: '',
+      lineWidth: 0,
+    } as unknown as CanvasRenderingContext2D;
+
+    const existing = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [existing], selectedPolygon: null });
+    loadImage(fixture);
+    vi.spyOn(canvasElement(fixture), 'getContext').mockReturnValue(fakeContext);
+    const renderer = TestBed.inject(POLYGON_CANVAS_RENDERER);
+    const renderSpy = vi.spyOn(renderer, 'render');
+    const previewSpy = vi.spyOn(renderer, 'renderDrawPreview');
+
+    drawButton(fixture).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+    expect(renderSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([expect.objectContaining({ id: 'p1' })]),
+      null,
+      expect.anything(),
+    );
+    expect(previewSpy).toHaveBeenCalled();
   });
 
   it('should not bind pointermove in the template, so idle pointer motion cannot schedule change detection', () => {

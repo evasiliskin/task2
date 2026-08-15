@@ -1,5 +1,5 @@
 import { NormalizedPoint } from '../normalized-point.model';
-import { addPoints, rotatePointAspectCorrected, subtractPoints } from './point-math';
+import { addPoints, rotatePointAspectCorrected, scalePoint, subtractPoints } from './point-math';
 
 describe('addPoints', () => {
   const cases: [NormalizedPoint, NormalizedPoint, NormalizedPoint][] = [
@@ -68,5 +68,15 @@ describe('rotatePointAspectCorrected', () => {
 
     expect(result.x).toBeCloseTo(0, 9);
     expect(result.y).toBeCloseTo(2, 9);
+  });
+});
+
+describe('scalePoint', () => {
+  it('should multiply both axes by the scale, when scaling a local point', () => {
+    expect(scalePoint({ x: 0.2, y: -0.1 }, 2)).toEqual({ x: 0.4, y: -0.2 });
+  });
+
+  it('should return the origin unchanged, when scaling the local origin', () => {
+    expect(scalePoint({ x: 0, y: 0 }, 3)).toEqual({ x: 0, y: 0 });
   });
 });

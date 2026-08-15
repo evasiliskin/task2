@@ -6,8 +6,10 @@ export const ImageEditorActions = createActionGroup({
   source: 'Image Editor',
   events: {
     'Polygon Created': props<{ polygon: Polygon }>(),
-    'Polygon Moved': props<{ imageId: string; position: NormalizedPoint }>(),
-    'Polygon Rotated': props<{ imageId: string; rotationRadians: number }>(),
-    'Polygon Deleted': props<{ imageId: string }>(),
+    'Polygon Moved': props<{ polygonId: string; position: NormalizedPoint }>(),
+    'Polygon Rotated': props<{ polygonId: string; rotationRadians: number }>(),
+    'Polygon Scaled': props<{ polygonId: string; scale: number }>(),
+    'Polygon Deleted': props<{ polygonId: string }>(),
+    'Polygon Selected': props<{ polygonId: string | null }>(),
   },
 });

@@ -16,21 +16,32 @@ export class ImagePreviewDialog {
   private readonly imageEditorFacade = inject(ImageEditorFacade);
   protected readonly target = inject<ImagePreviewTarget>(NZ_MODAL_DATA);
 
-  protected readonly polygon = this.imageEditorFacade.polygonFor(this.target.imageId);
+  protected readonly polygons = this.imageEditorFacade.polygonsFor(this.target.imageId);
+  protected readonly selectedPolygon = this.imageEditorFacade.selectedPolygonFor(
+    this.target.imageId,
+  );
 
   protected onPolygonDrawn(points: readonly NormalizedPoint[]): void {
     this.imageEditorFacade.createPolygon(points, this.target.imageId);
   }
 
-  protected onPolygonMoved(position: NormalizedPoint): void {
-    this.imageEditorFacade.movePolygon(this.target.imageId, position);
+  protected onPolygonMoved(event: { polygonId: string; position: NormalizedPoint }): void {
+    this.imageEditorFacade.movePolygon(event.polygonId, event.position);
   }
 
-  protected onPolygonRotated(rotationRadians: number): void {
-    this.imageEditorFacade.rotatePolygon(this.target.imageId, rotationRadians);
+  protected onPolygonRotated(event: { polygonId: string; rotationRadians: number }): void {
+    this.imageEditorFacade.rotatePolygon(event.polygonId, event.rotationRadians);
   }
 
-  protected onPolygonDeleted(): void {
-    this.imageEditorFacade.deletePolygon(this.target.imageId);
+  protected onPolygonScaled(event: { polygonId: string; scale: number }): void {
+    this.imageEditorFacade.scalePolygon(event.polygonId, event.scale);
+  }
+
+  protected onPolygonDeleted(polygonId: string): void {
+    this.imageEditorFacade.deletePolygon(polygonId);
+  }
+
+  protected onPolygonSelected(polygonId: string | null): void {
+    this.imageEditorFacade.selectPolygon(polygonId);
   }
 }

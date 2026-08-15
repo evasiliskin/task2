@@ -8,6 +8,10 @@ export function subtractPoints(a: NormalizedPoint, b: NormalizedPoint): Normaliz
   return { x: a.x - b.x, y: a.y - b.y };
 }
 
+export function scalePoint(point: NormalizedPoint, scale: number): NormalizedPoint {
+  return { x: point.x * scale, y: point.y * scale };
+}
+
 export function rotatePointAspectCorrected(
   point: NormalizedPoint,
   radians: number,

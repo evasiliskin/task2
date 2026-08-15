@@ -14,6 +14,7 @@ describe('getWorldPoints', () => {
       ],
       position: { x: 5, y: 5 },
       rotationRadians: 0,
+      scale: 1,
     };
 
     expect(getWorldPoints(polygon, 1)).toEqual([
@@ -30,6 +31,7 @@ describe('getWorldPoints', () => {
       points: [{ x: 1, y: 0 }],
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
+      scale: 1,
     };
 
     const [result] = getWorldPoints(polygon, 1);
@@ -45,6 +47,7 @@ describe('getWorldPoints', () => {
       points: [{ x: 1, y: 0 }],
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
+      scale: 1,
     };
 
     const [result] = getWorldPoints(polygon, 2);
@@ -64,10 +67,92 @@ describe('getWorldPoints', () => {
       ],
       position: { x: 0.5, y: 0.5 },
       rotationRadians: Math.PI / 3,
+      scale: 1,
     };
 
     expect(toWorldPoints(polygon.points, polygon, 1.5)).toEqual(
       polygon.points.map((point) => toWorldPoint(point, polygon, 1.5)),
     );
+  });
+});
+
+describe('getWorldPoints with scale', () => {
+  it('should place vertices twice as far from the centroid, when scale is 2 and rotation is 0', () => {
+    const polygon = {
+      id: 'p1',
+      imageId: 'i1',
+      points: [
+        { x: -0.1, y: -0.1 },
+        { x: 0.1, y: -0.1 },
+        { x: 0, y: 0.1 },
+      ],
+      position: { x: 0.5, y: 0.5 },
+      rotationRadians: 0,
+      scale: 2,
+    };
+
+    expect(getWorldPoints(polygon, 1)).toEqual([
+      { x: 0.3, y: 0.3 },
+      { x: 0.7, y: 0.3 },
+      { x: 0.5, y: 0.7 },
+    ]);
+  });
+
+  it('should keep the centroid fixed, when the scale changes', () => {
+    const base = {
+      id: 'p1',
+      imageId: 'i1',
+      points: [
+        { x: -0.1, y: -0.1 },
+        { x: 0.1, y: -0.1 },
+        { x: 0, y: 0.2 },
+      ],
+      position: { x: 0.4, y: 0.6 },
+      rotationRadians: Math.PI / 3,
+      scale: 1,
+    };
+
+    const centroidOf = (points: readonly { x: number; y: number }[]) => ({
+      x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
+      y: points.reduce((sum, p) => sum + p.y, 0) / points.length,
+    });
+
+    const atOne = centroidOf(getWorldPoints(base, 1.75));
+    const atThree = centroidOf(getWorldPoints({ ...base, scale: 3 }, 1.75));
+
+    expect(atThree.x).toBeCloseTo(atOne.x, 10);
+    expect(atThree.y).toBeCloseTo(atOne.y, 10);
+  });
+});
+
+describe('ratio preservation', () => {
+  it('should scale pixel geometry proportionally, when the canvas box grows uniformly', () => {
+    const polygon = {
+      id: 'p1',
+      imageId: 'i1',
+      points: [
+        { x: -0.1, y: -0.05 },
+        { x: 0.1, y: -0.05 },
+        { x: 0, y: 0.12 },
+      ],
+      position: { x: 0.4, y: 0.55 },
+      rotationRadians: Math.PI / 5,
+      scale: 1.6,
+    };
+    const aspectRatio = 16 / 9;
+
+    const small = getWorldPoints(polygon, aspectRatio).map((point) => ({
+      x: point.x * 320,
+      y: point.y * 180,
+    }));
+    const large = getWorldPoints(polygon, aspectRatio).map((point) => ({
+      x: point.x * 960,
+      y: point.y * 540,
+    }));
+
+    large.forEach((point, index) => {
+      expect(point.x).toBeCloseTo(small[index].x * 3, 8);
+      expect(point.y).toBeCloseTo(small[index].y * 3, 8);
+    });
   });
 });

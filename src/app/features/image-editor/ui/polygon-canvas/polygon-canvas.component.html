@@ -13,9 +13,10 @@
     <canvas
       #canvasEl
       class="polygon-canvas__overlay"
+      [class.polygon-canvas__overlay--drawing]="mode() === 'drawing'"
       [attr.tabindex]="0"
       role="group"
-      [attr.aria-label]="polygon() ? editorAriaLabel : drawAriaLabel"
+      [attr.aria-label]="canvasAriaLabel()"
       (pointerdown)="onPointerDown($event)"
       (dblclick)="onCanvasDoubleClick()"
       (keydown)="onKeyDown($event)"
@@ -36,11 +37,11 @@
     </p>
   }
 
-  @if (!polygon() && imageStatus() === 'loaded') {
-    <div class="polygon-canvas__draw-controls">
+  <div class="polygon-canvas__toolbar">
+    @if (mode() === 'drawing') {
       <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
         @if (drawPoints().length === 0) {
-          Click the image to start drawing a polygon.
+          Click the image to place the first point.
         } @else {
           {{ drawPoints().length }} point(s) placed — add at least {{ minPoints }} to finish.
         }
@@ -55,26 +56,42 @@
       >
         Finish polygon
       </button>
+      <button type="button" nz-button nzSize="small" (click)="onCancelDraw()">Cancel</button>
+    } @else {
       <button
         type="button"
         nz-button
         nzSize="small"
-        [disabled]="drawPoints().length === 0"
-        (click)="onCancelDraw()"
+        nzType="primary"
+        [disabled]="!canDraw()"
+        (click)="onStartDraw()"
       >
-        Clear points
+        Draw polygon
       </button>
-    </div>
-  }
-
-  @if (polygon() && imageStatus() === 'loaded') {
-    <div class="polygon-canvas__edit-controls">
-      <span class="polygon-canvas__draw-hint">
-        Drag the polygon to move it, drag the handle to rotate it.
-      </span>
-      <button type="button" nz-button nzSize="small" nzDanger (click)="onDeletePolygon()">
-        Delete polygon
-      </button>
-    </div>
-  }
+      @if (polygons().length > 0) {
+        <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
+          @if (selectedIndex() >= 0) {
+            Polygon {{ selectedIndex() + 1 }} of {{ polygons().length }}
+          } @else {
+            {{ polygons().length }} polygon(s) — select one to edit
+          }
+        </span>
+        <button type="button" nz-button nzSize="small" (click)="onSelectPrevious()">
+          Previous
+        </button>
+        <button type="button" nz-button nzSize="small" (click)="onSelectNext()">Next</button>
+        @if (selectedPolygon(); as selected) {
+          <button
+            type="button"
+            nz-button
+            nzSize="small"
+            nzDanger
+            (click)="onDeletePolygon(selected.id)"
+          >
+            Delete polygon
+          </button>
+        }
+      }
+    }
+  </div>
 </div>

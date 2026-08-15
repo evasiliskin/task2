@@ -6,4 +6,5 @@ export interface Polygon {
   readonly points: readonly NormalizedPoint[];
   readonly position: NormalizedPoint;
   readonly rotationRadians: number;
+  readonly scale: number;
 }

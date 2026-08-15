@@ -1,9 +1,9 @@
-import { Page, Route, expect, test } from '@playwright/test';
-import { SEARCH_RESULTS_PAGE_SIZE } from '../src/app/core/api/openverse/openverse-api.config';
-import type {
-  OpenverseImageDto,
-  OpenverseSearchResponseDto,
-} from '../src/app/features/search/data-access/openverse-image.dto';
+import { expect, test } from '@playwright/test';
+import {
+  mockOpenverseSearch,
+  waitForStableCanvasBox,
+  waitForStableCanvasDataUrl,
+} from './openverse-mock';
 
 /**
  * Covers the three defects this review pass fixed that jsdom cannot exercise:
@@ -20,16 +20,10 @@ const VIEWPORT_HEIGHTS_PX = {
 } as const;
 
 const SEARCH_QUERY = 'mountains';
-const MOCK_TOTAL_PAGES = 5;
 const PAGINATION_TARGET_PAGE = 3;
 const MAX_SCROLL_ATTEMPTS = 40;
 const SCROLL_STEP_PX = 900;
 const SCROLL_SETTLE_MS = 150;
-
-const MOCK_IMAGE_DATA_URL =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
-const MOCK_IMAGE_WIDTH_PX = 960;
-const MOCK_IMAGE_HEIGHT_PX = 540;
 
 const DRAW_POINT_RATIOS = [
   { x: 0.3, y: 0.75 },
@@ -42,89 +36,6 @@ const POLYGON_CENTROID_RATIO = {
 };
 const DRAG_OFFSET_PX = { x: 70, y: -50 };
 const DRAG_MOVE_STEPS = 10;
-
-function buildMockPage(query: string, page: number): OpenverseSearchResponseDto {
-  const results: OpenverseImageDto[] = Array.from(
-    { length: SEARCH_RESULTS_PAGE_SIZE },
-    (_unused, index) => {
-      const id = `${query}-p${page}-i${index}`;
-      return {
-        id,
-        title: `Result ${page}-${index}`,
-        url: MOCK_IMAGE_DATA_URL,
-        thumbnail: MOCK_IMAGE_DATA_URL,
-        width: MOCK_IMAGE_WIDTH_PX,
-        height: MOCK_IMAGE_HEIGHT_PX,
-        creator: 'Test Photographer',
-        foreign_landing_url: `https://example.invalid/${id}`,
-      };
-    },
-  );
-  return {
-    result_count: MOCK_TOTAL_PAGES * SEARCH_RESULTS_PAGE_SIZE,
-    page_count: MOCK_TOTAL_PAGES,
-    results,
-  };
-}
-
-async function mockOpenverseSearch(page: Page, servedPages: Set<number>): Promise<void> {
-  await page.route('**/v1/images/**', async (route: Route) => {
-    const url = new URL(route.request().url());
-    const requestedPage = Number(url.searchParams.get('page') ?? '1');
-    servedPages.add(requestedPage);
-    await route.fulfill({ json: buildMockPage(SEARCH_QUERY, requestedPage) });
-  });
-}
-
-async function readCanvasDataUrl(page: Page) {
-  return page.locator('canvas.polygon-canvas__overlay').evaluate((element) => {
-    return (element as HTMLCanvasElement).toDataURL();
-  });
-}
-
-const STABLE_VALUE_POLL_MS = 100;
-const STABLE_VALUE_MAX_ATTEMPTS = 20;
-
-/**
- * The dialog's zoom-in entrance animation and the canvas's own
- * ResizeObserver -> requestAnimationFrame render pipeline both run after the
- * "polygon exists" text becomes visible, so a single read right after that
- * text appears can catch an in-between frame (or the browser's un-sized
- * 300x150 canvas default). Poll until two consecutive reads agree.
- */
-async function waitForStableCanvasDataUrl(page: Page): Promise<string> {
-  let previous = await readCanvasDataUrl(page);
-  for (let attempt = 0; attempt < STABLE_VALUE_MAX_ATTEMPTS; attempt++) {
-    await page.waitForTimeout(STABLE_VALUE_POLL_MS);
-    const current = await readCanvasDataUrl(page);
-    if (current === previous) {
-      return current;
-    }
-    previous = current;
-  }
-  throw new Error('canvas did not settle to a stable frame in time');
-}
-
-async function waitForStableCanvasBox(page: Page) {
-  const canvas = page.locator('canvas.polygon-canvas__overlay');
-  let previous = await canvas.boundingBox();
-  for (let attempt = 0; attempt < STABLE_VALUE_MAX_ATTEMPTS; attempt++) {
-    await page.waitForTimeout(STABLE_VALUE_POLL_MS);
-    const current = await canvas.boundingBox();
-    if (
-      previous &&
-      current &&
-      previous.x === current.x &&
-      previous.y === current.y &&
-      previous.width === current.width &&
-      previous.height === current.height
-    ) {
-      return current;
-    }
-    previous = current;
-  }
-  throw new Error('polygon canvas bounding box did not settle in time');
-}
 
 for (const [heightLabel, viewportHeight] of Object.entries(VIEWPORT_HEIGHTS_PX)) {
   test(`search, paginate, draw and persist a polygon at a ${heightLabel} viewport`, async ({
@@ -171,7 +82,8 @@ for (const [heightLabel, viewportHeight] of Object.entries(VIEWPORT_HEIGHTS_PX))
 
     const canvas = page.locator('canvas.polygon-canvas__overlay');
     await canvas.scrollIntoViewIfNeeded();
-    await expect(page.getByText('Click the image to start drawing a polygon.')).toBeVisible();
+    await page.getByRole('button', { name: 'Draw polygon' }).click();
+    await expect(page.getByText('Click the image to place the first point.')).toBeVisible();
 
     let box = await waitForStableCanvasBox(page);
     for (const point of DRAW_POINT_RATIOS) {
@@ -180,9 +92,7 @@ for (const [heightLabel, viewportHeight] of Object.entries(VIEWPORT_HEIGHTS_PX))
       });
     }
     await page.getByRole('button', { name: 'Finish polygon' }).click();
-    await expect(
-      page.getByText('Drag the polygon to move it, drag the handle to rotate it.'),
-    ).toBeVisible();
+    await expect(page.getByText('Polygon 1 of 1')).toBeVisible();
 
     const afterDrawDataUrl = await waitForStableCanvasDataUrl(page);
 
@@ -216,9 +126,7 @@ for (const [heightLabel, viewportHeight] of Object.entries(VIEWPORT_HEIGHTS_PX))
       .click();
     const reopenedModal = page.locator('.ant-modal');
     await expect(reopenedModal).toBeVisible();
-    await expect(
-      page.getByText('Drag the polygon to move it, drag the handle to rotate it.'),
-    ).toBeVisible();
+    await expect(page.getByText('Polygon 1 of 1')).toBeVisible();
 
     const reopenedDataUrl = await waitForStableCanvasDataUrl(page);
     expect(

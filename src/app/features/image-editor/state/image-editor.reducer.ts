@@ -1,24 +1,34 @@
 import { createEntityAdapter, EntityState } from '@ngrx/entity';
 import { createFeature, createReducer, on } from '@ngrx/store';
+import { clampPolygonScale } from '../domain/geometry/clamp-polygon-scale';
 import { Polygon } from '../domain/polygon.model';
 import { ImageEditorActions } from './image-editor.actions';
 
-export const MAX_STORED_POLYGONS = 50;
+export const MAX_STORED_POLYGONS = 200;
 
-export type ImageEditorState = EntityState<Polygon>;
+export interface ImageEditorState extends EntityState<Polygon> {
+  readonly selectedPolygonId: string | null;
+}
 
 export const polygonAdapter = createEntityAdapter<Polygon>({
-  selectId: (polygon) => polygon.imageId,
+  selectId: (polygon) => polygon.id,
 });
 
-export const initialState: ImageEditorState = polygonAdapter.getInitialState();
+export const initialState: ImageEditorState = polygonAdapter.getInitialState({
+  selectedPolygonId: null,
+});
 
 function evictOldestPolygons(state: ImageEditorState): ImageEditorState {
   if (state.ids.length <= MAX_STORED_POLYGONS) {
     return state;
   }
-  const surplus = state.ids.length - MAX_STORED_POLYGONS;
-  return polygonAdapter.removeMany(state.ids.slice(0, surplus).map(String), state);
+
+  const evictedIds = state.ids.slice(0, state.ids.length - MAX_STORED_POLYGONS).map(String);
+  const evicted = polygonAdapter.removeMany(evictedIds, state);
+
+  return evicted.selectedPolygonId !== null && evictedIds.includes(evicted.selectedPolygonId)
+    ? { ...evicted, selectedPolygonId: null }
+    : evicted;
 }
 
 export const imageEditorFeature = createFeature({
@@ -26,17 +36,33 @@ export const imageEditorFeature = createFeature({
   reducer: createReducer(
     initialState,
     on(ImageEditorActions.polygonCreated, (state, { polygon }) =>
-      evictOldestPolygons(polygonAdapter.upsertOne(polygon, state)),
+      evictOldestPolygons({
+        ...polygonAdapter.addOne(polygon, state),
+        selectedPolygonId: polygon.id,
+      }),
     ),
-    on(ImageEditorActions.polygonMoved, (state, { imageId, position }) =>
-      polygonAdapter.updateOne({ id: imageId, changes: { position } }, state),
+    on(ImageEditorActions.polygonMoved, (state, { polygonId, position }) =>
+      polygonAdapter.updateOne({ id: polygonId, changes: { position } }, state),
     ),
-    on(ImageEditorActions.polygonRotated, (state, { imageId, rotationRadians }) =>
-      polygonAdapter.updateOne({ id: imageId, changes: { rotationRadians } }, state),
+    on(ImageEditorActions.polygonRotated, (state, { polygonId, rotationRadians }) =>
+      polygonAdapter.updateOne({ id: polygonId, changes: { rotationRadians } }, state),
     ),
-    on(ImageEditorActions.polygonDeleted, (state, { imageId }) =>
-      polygonAdapter.removeOne(imageId, state),
+    on(ImageEditorActions.polygonScaled, (state, { polygonId, scale }) =>
+      polygonAdapter.updateOne(
+        { id: polygonId, changes: { scale: clampPolygonScale(scale) } },
+        state,
+      ),
     ),
+    on(ImageEditorActions.polygonDeleted, (state, { polygonId }) => {
+      const removed = polygonAdapter.removeOne(polygonId, state);
+      return state.selectedPolygonId === polygonId
+        ? { ...removed, selectedPolygonId: null }
+        : removed;
+    }),
+    on(ImageEditorActions.polygonSelected, (state, { polygonId }) => ({
+      ...state,
+      selectedPolygonId: polygonId,
+    })),
   ),
   extraSelectors: ({ selectImageEditorState }) => ({
     ...polygonAdapter.getSelectors(selectImageEditorState),

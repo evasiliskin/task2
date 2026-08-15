@@ -2,7 +2,8 @@ import { NormalizedPoint } from '../domain/normalized-point.model';
 import { Polygon } from '../domain/polygon.model';
 import { CanvasBoxSize, PixelPoint } from '../domain/geometry/coordinate-mapping.model';
 import { clampPolygonPosition } from '../domain/geometry/clamp-polygon-position';
-import { getRotationHandlePoint } from '../domain/geometry/get-rotation-handle-point';
+import { clampPolygonScale } from '../domain/geometry/clamp-polygon-scale';
+import { getRotationHandlePixel, getScaleHandlePixels } from '../domain/geometry/get-handle-points';
 import { getWorldPoints } from '../domain/geometry/get-world-points';
 import { isPointInPolygon } from '../domain/geometry/is-point-in-polygon';
 import { normalizeRotation } from '../domain/geometry/normalize-rotation';
@@ -11,9 +12,11 @@ import { toNormalizedPoint } from '../domain/geometry/to-normalized-point';
 import { toPixelPoint } from '../domain/geometry/to-pixel-point';
 
 export const ROTATION_HANDLE_HIT_RADIUS_PX = 12;
+export const SCALE_HANDLE_HIT_RADIUS_PX = 10;
 export const DRAW_CLOSE_HIT_RADIUS_PX = 10;
 export const KEYBOARD_NUDGE_STEP = 0.02;
 export const KEYBOARD_ROTATION_STEP_RADIANS = Math.PI / 12;
+export const KEYBOARD_SCALE_STEP = 1.1;
 
 export interface DragSession {
   readonly polygon: Polygon;
@@ -23,6 +26,11 @@ export interface DragSession {
 export interface RotateSession {
   readonly polygon: Polygon;
   readonly angleOffset: number;
+}
+
+export interface ScaleSession {
+  readonly polygon: Polygon;
+  readonly referenceDistancePx: number;
 }
 
 function subtractPixelPoints(a: PixelPoint, b: PixelPoint): PixelPoint {
@@ -52,9 +60,59 @@ export class PolygonInteractionController {
     boxSize: CanvasBoxSize,
     hitRadiusPx: number = ROTATION_HANDLE_HIT_RADIUS_PX,
   ): boolean {
-    const aspectRatio = boxSize.width / boxSize.height;
-    const handlePixel = toPixelPoint(getRotationHandlePoint(polygon, aspectRatio), boxSize);
-    return pixelDistance(pixelPointer, handlePixel) <= hitRadiusPx;
+    return pixelDistance(pixelPointer, getRotationHandlePixel(polygon, boxSize)) <= hitRadiusPx;
+  }
+
+  hitTestScaleHandle(
+    polygon: Polygon,
+    pixelPointer: PixelPoint,
+    boxSize: CanvasBoxSize,
+    hitRadiusPx: number = SCALE_HANDLE_HIT_RADIUS_PX,
+  ): number | null {
+    const index = getScaleHandlePixels(polygon, boxSize).findIndex(
+      (corner) => pixelDistance(pixelPointer, corner) <= hitRadiusPx,
+    );
+    return index === -1 ? null : index;
+  }
+
+  hitTestTopmostBody(
+    polygons: readonly Polygon[],
+    pixelPointer: PixelPoint,
+    boxSize: CanvasBoxSize,
+    selected: Polygon | null = null,
+  ): Polygon | null {
+    if (selected && this.hitTestBody(selected, pixelPointer, boxSize)) {
+      return selected;
+    }
+    for (let index = polygons.length - 1; index >= 0; index--) {
+      if (this.hitTestBody(polygons[index], pixelPointer, boxSize)) {
+        return polygons[index];
+      }
+    }
+    return null;
+  }
+
+  beginScale(polygon: Polygon, handleIndex: number, boxSize: CanvasBoxSize): ScaleSession {
+    const centrePixel = toPixelPoint(polygon.position, boxSize);
+    const unitCorner = getScaleHandlePixels({ ...polygon, scale: 1 }, boxSize)[handleIndex];
+    return { polygon, referenceDistancePx: pixelDistance(unitCorner, centrePixel) };
+  }
+
+  updateScale(session: ScaleSession, pixelPointer: PixelPoint, boxSize: CanvasBoxSize): Polygon {
+    if (session.referenceDistancePx === 0) {
+      return session.polygon;
+    }
+    const centrePixel = toPixelPoint(session.polygon.position, boxSize);
+    return {
+      ...session.polygon,
+      scale: clampPolygonScale(
+        pixelDistance(pixelPointer, centrePixel) / session.referenceDistancePx,
+      ),
+    };
+  }
+
+  nextScale(polygon: Polygon, factor: number): number {
+    return clampPolygonScale(polygon.scale * factor);
   }
 
   isNearFirstDrawPoint(

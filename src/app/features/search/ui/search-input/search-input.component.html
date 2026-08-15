@@ -1,16 +1,34 @@
 <div class="search-input">
   <label for="search-input-field" class="search-input__label">Search images</label>
-  <input
-    id="search-input-field"
-    nz-input
-    name="searchQuery"
-    autocomplete="off"
-    placeholder='Try "mountains" or "cats"'
-    [nzAutocomplete]="auto"
-    [ngModel]="query()"
-    (ngModelChange)="queryChange.emit($event)"
-  />
-  <nz-autocomplete #auto>
+  <div class="search-input__field">
+    <input
+      id="search-input-field"
+      nz-input
+      type="search"
+      role="combobox"
+      name="searchQuery"
+      autocomplete="off"
+      aria-controls="search-suggestions"
+      [attr.aria-expanded]="suggestions().length > 0"
+      placeholder='Try "mountains" or "cats"'
+      [nzAutocomplete]="auto"
+      [ngModel]="query()"
+      (ngModelChange)="queryChange.emit($event)"
+    />
+    @if (query().length > 0) {
+      <button
+        type="button"
+        nz-button
+        nzType="text"
+        nzSize="small"
+        class="search-input__clear"
+        (click)="queryChange.emit('')"
+      >
+        Clear search
+      </button>
+    }
+  </div>
+  <nz-autocomplete #auto id="search-suggestions">
     @for (suggestion of suggestions(); track suggestion) {
       <nz-auto-option [nzValue]="suggestion">{{ suggestion }}</nz-auto-option>
     }

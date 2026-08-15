@@ -29,13 +29,16 @@ describe('SearchShell', () => {
     return TestBed.createComponent(SearchShell);
   }
 
-  it('should expose no suggestions, when the query text is empty', () => {
+  it('should expose recent-query suggestions, when the query text is empty', () => {
     const fixture = setup();
+    TestBed.inject(Store).dispatch(
+      QueryHistoryActions.queryRecorded({ query: 'mountains', usedAt: 1 }),
+    );
     fixture.detectChanges();
     const component = fixture.componentInstance as unknown as {
       suggestions: () => readonly string[];
     };
-    expect(component.suggestions()).toEqual([]);
+    expect(component.suggestions()).toEqual(['mountains']);
   });
 
   it('should expose a matching history suggestion, when the typed query prefixes a recorded query', () => {

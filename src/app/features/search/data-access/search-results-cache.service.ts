@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
-import kebabCase from 'lodash/kebabCase';
 import { CLOCK } from '@core/time/clock.token';
+import { toCanonicalQuery } from '@shared/search-query';
 import { MappedSearchPage } from './search-result.mapper';
+import { toKebabCase } from './to-kebab-case';
 
 export const MAX_CACHE_ENTRIES = 30;
 export const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -46,6 +47,7 @@ export class SearchResultsCache {
   }
 
   private cacheKey(query: string, page: number): string {
-    return `${kebabCase(query)}::${encodeURIComponent(query)}::${page}`;
+    const canonicalQuery = toCanonicalQuery(query);
+    return `${toKebabCase(canonicalQuery)}::${encodeURIComponent(canonicalQuery)}::${page}`;
   }
 }

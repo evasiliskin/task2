@@ -1,6 +1,6 @@
 import { NormalizedPoint } from '../normalized-point.model';
 import { Polygon } from '../polygon.model';
-import { addPoints, rotatePointAspectCorrected } from './point-math';
+import { addPoints, rotatePointAspectCorrected, scalePoint } from './point-math';
 
 export function toWorldPoint(
   localPoint: NormalizedPoint,
@@ -8,7 +8,11 @@ export function toWorldPoint(
   aspectRatio: number,
 ): NormalizedPoint {
   return addPoints(
-    rotatePointAspectCorrected(localPoint, polygon.rotationRadians, aspectRatio),
+    rotatePointAspectCorrected(
+      scalePoint(localPoint, polygon.scale),
+      polygon.rotationRadians,
+      aspectRatio,
+    ),
     polygon.position,
   );
 }

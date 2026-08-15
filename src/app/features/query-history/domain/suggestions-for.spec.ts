@@ -14,8 +14,10 @@ describe('suggestionsFor', () => {
     entry('react architecture', 1),
   ];
 
-  it('should return an empty array, when the input is blank', () => {
-    expect(suggestionsFor('   ', history)).toEqual([]);
+  it('should return the most recent entries, when the input is blank', () => {
+    const history = [entry('cats', 1), entry('dogs', 3), entry('birds', 2)];
+
+    expect(suggestionsFor('', history, 2)).toEqual(['dogs', 'birds']);
   });
 
   it('should match history entries containing a word starting with the input, when a partial word is typed', () => {

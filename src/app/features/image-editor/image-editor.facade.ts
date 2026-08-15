@@ -4,35 +4,60 @@ import { Store } from '@ngrx/store';
 import { createPolygonFromPoints } from './domain/geometry/create-polygon-from-points';
 import { NormalizedPoint } from './domain/normalized-point.model';
 import { Polygon } from './domain/polygon.model';
+import { POLYGON_ID } from './domain/polygon-id.token';
 import { ImageEditorActions } from './state/image-editor.actions';
 import { imageEditorFeature } from './state/image-editor.reducer';
 
 @Injectable({ providedIn: 'root' })
 export class ImageEditorFacade {
   private readonly store = inject(Store);
-  private readonly entities = toSignal(this.store.select(imageEditorFeature.selectEntities), {
+  private readonly nextPolygonId = inject(POLYGON_ID);
+
+  private readonly polygons = toSignal(this.store.select(imageEditorFeature.selectAll), {
     requireSync: true,
   });
+  private readonly selectedPolygonId = toSignal(
+    this.store.select(imageEditorFeature.selectSelectedPolygonId),
+    { requireSync: true },
+  );
 
-  polygonFor(imageId: string): Signal<Polygon | null> {
-    return computed(() => this.entities()[imageId] ?? null);
+  polygonsFor(imageId: string): Signal<readonly Polygon[]> {
+    return computed(() => this.polygons().filter((polygon) => polygon.imageId === imageId));
+  }
+
+  selectedPolygonFor(imageId: string): Signal<Polygon | null> {
+    return computed(() => {
+      const selectedId = this.selectedPolygonId();
+      const selected = this.polygons().find((polygon) => polygon.id === selectedId);
+      return selected && selected.imageId === imageId ? selected : null;
+    });
   }
 
   createPolygon(rawPoints: readonly NormalizedPoint[], imageId: string): void {
     this.store.dispatch(
-      ImageEditorActions.polygonCreated({ polygon: createPolygonFromPoints(rawPoints, imageId) }),
+      ImageEditorActions.polygonCreated({
+        polygon: createPolygonFromPoints(rawPoints, imageId, this.nextPolygonId()),
+      }),
     );
   }
 
-  movePolygon(imageId: string, position: NormalizedPoint): void {
-    this.store.dispatch(ImageEditorActions.polygonMoved({ imageId, position }));
+  movePolygon(polygonId: string, position: NormalizedPoint): void {
+    this.store.dispatch(ImageEditorActions.polygonMoved({ polygonId, position }));
   }
 
-  rotatePolygon(imageId: string, rotationRadians: number): void {
-    this.store.dispatch(ImageEditorActions.polygonRotated({ imageId, rotationRadians }));
+  rotatePolygon(polygonId: string, rotationRadians: number): void {
+    this.store.dispatch(ImageEditorActions.polygonRotated({ polygonId, rotationRadians }));
   }
 
-  deletePolygon(imageId: string): void {
-    this.store.dispatch(ImageEditorActions.polygonDeleted({ imageId }));
+  scalePolygon(polygonId: string, scale: number): void {
+    this.store.dispatch(ImageEditorActions.polygonScaled({ polygonId, scale }));
+  }
+
+  deletePolygon(polygonId: string): void {
+    this.store.dispatch(ImageEditorActions.polygonDeleted({ polygonId }));
+  }
+
+  selectPolygon(polygonId: string | null): void {
+    this.store.dispatch(ImageEditorActions.polygonSelected({ polygonId }));
   }
 }
