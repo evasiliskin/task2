@@ -64,6 +64,7 @@ export class PolygonCanvas {
   readonly imageHeight = input(0);
   readonly polygons = input.required<readonly Polygon[]>();
   readonly selectedPolygon = input<Polygon | null>(null);
+  readonly isAtCapacity = input(false);
 
   readonly polygonDrawn = output<readonly NormalizedPoint[]>();
   readonly polygonMoved = output<{ polygonId: string; position: NormalizedPoint }>();

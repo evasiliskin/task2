@@ -15,6 +15,7 @@ describe('getWorldPoints', () => {
       position: { x: 5, y: 5 },
       rotationRadians: 0,
       scale: 1,
+      createdAt: 0,
     };
 
     expect(getWorldPoints(polygon, 1)).toEqual([
@@ -32,6 +33,7 @@ describe('getWorldPoints', () => {
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
       scale: 1,
+      createdAt: 0,
     };
 
     const [result] = getWorldPoints(polygon, 1);
@@ -48,6 +50,7 @@ describe('getWorldPoints', () => {
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
       scale: 1,
+      createdAt: 0,
     };
 
     const [result] = getWorldPoints(polygon, 2);
@@ -68,6 +71,7 @@ describe('getWorldPoints', () => {
       position: { x: 0.5, y: 0.5 },
       rotationRadians: Math.PI / 3,
       scale: 1,
+      createdAt: 0,
     };
 
     expect(toWorldPoints(polygon.points, polygon, 1.5)).toEqual(
@@ -89,6 +93,7 @@ describe('getWorldPoints with scale', () => {
       position: { x: 0.5, y: 0.5 },
       rotationRadians: 0,
       scale: 2,
+      createdAt: 0,
     };
 
     expect(getWorldPoints(polygon, 1)).toEqual([
@@ -110,6 +115,7 @@ describe('getWorldPoints with scale', () => {
       position: { x: 0.4, y: 0.6 },
       rotationRadians: Math.PI / 3,
       scale: 1,
+      createdAt: 0,
     };
 
     const centroidOf = (points: readonly { x: number; y: number }[]) => ({
@@ -138,6 +144,7 @@ describe('cross-check with toWorldPoint', () => {
       position: { x: 0.5, y: 0.5 },
       rotationRadians: Math.PI / 7,
       scale: 1.4,
+      createdAt: 0,
     };
     const aspectRatio = 16 / 9;
 
@@ -160,6 +167,7 @@ describe('ratio preservation', () => {
       position: { x: 0.4, y: 0.55 },
       rotationRadians: Math.PI / 5,
       scale: 1.6,
+      createdAt: 0,
     };
     const aspectRatio = 16 / 9;
 

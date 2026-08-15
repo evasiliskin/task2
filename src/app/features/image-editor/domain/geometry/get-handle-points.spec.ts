@@ -21,6 +21,7 @@ function polygonAt(y: number, rotationRadians = 0, scale = 1): Polygon {
     position: { x: 0.5, y },
     rotationRadians,
     scale,
+    createdAt: 0,
   };
 }
 

@@ -9,6 +9,7 @@ export function createPolygonFromPoints(
   rawPoints: readonly NormalizedPoint[],
   imageId: string,
   id: string,
+  createdAt: number,
 ): Polygon {
   if (rawPoints.length < MIN_POLYGON_POINTS) {
     throw new Error(`createPolygonFromPoints requires at least ${MIN_POLYGON_POINTS} points`);
@@ -23,5 +24,6 @@ export function createPolygonFromPoints(
     position: centroid,
     rotationRadians: 0,
     scale: 1,
+    createdAt,
   };
 }

@@ -42,6 +42,7 @@ describe('isPointInPolygon', () => {
       ],
       'image-1',
       'polygon-1',
+      0,
     );
     const worldPoints = getWorldPoints(polygon, 1);
 

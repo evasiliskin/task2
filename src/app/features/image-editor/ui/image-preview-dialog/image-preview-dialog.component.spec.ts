@@ -16,6 +16,7 @@ class FakePolygonCanvas {
   readonly imageHeight = input(0);
   readonly polygons = input.required<readonly Polygon[]>();
   readonly selectedPolygon = input<Polygon | null>(null);
+  readonly isAtCapacity = input(false);
   readonly polygonDrawn = output<readonly NormalizedPoint[]>();
   readonly polygonMoved = output<{ polygonId: string; position: NormalizedPoint }>();
   readonly polygonRotated = output<{ polygonId: string; rotationRadians: number }>();
@@ -31,6 +32,7 @@ function squarePolygon(id: string): Polygon {
     position: { x: 0.5, y: 0.5 },
     rotationRadians: 0,
     scale: 1,
+    createdAt: 0,
     points: [
       { x: -0.1, y: -0.1 },
       { x: 0.1, y: -0.1 },
@@ -50,11 +52,16 @@ describe('ImagePreviewDialog', () => {
   };
 
   function renderDialog(
-    options: { polygons?: readonly Polygon[]; selectedPolygon?: Polygon | null } = {},
+    options: {
+      polygons?: readonly Polygon[];
+      selectedPolygon?: Polygon | null;
+      isAtCapacity?: boolean;
+    } = {},
   ) {
     const facade = {
       polygonsFor: vi.fn().mockReturnValue(signal(options.polygons ?? [])),
       selectedPolygonFor: vi.fn().mockReturnValue(signal(options.selectedPolygon ?? null)),
+      isAtCapacity: signal(options.isAtCapacity ?? false),
       createPolygon: vi.fn(),
       movePolygon: vi.fn(),
       rotatePolygon: vi.fn(),
@@ -104,6 +111,12 @@ describe('ImagePreviewDialog', () => {
     const { fixture } = renderDialog({ polygons: [selectedPolygon], selectedPolygon });
 
     expect(canvasOf(fixture).selectedPolygon()).toEqual(selectedPolygon);
+  });
+
+  it('should pass the capacity flag from the facade down to the canvas, when at capacity', () => {
+    const { fixture } = renderDialog({ isAtCapacity: true });
+
+    expect(canvasOf(fixture).isAtCapacity()).toBe(true);
   });
 
   it('should create a polygon via the facade, when the canvas emits polygonDrawn', () => {

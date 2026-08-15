@@ -68,6 +68,7 @@ function polygon(id: string): Polygon {
     position: { x: 0.5, y: 0.5 },
     rotationRadians: 0,
     scale: 1,
+    createdAt: 0,
   };
 }
 

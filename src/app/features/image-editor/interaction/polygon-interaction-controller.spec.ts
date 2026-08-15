@@ -22,6 +22,7 @@ describe('PolygonInteractionController', () => {
     position: { x: 0.5, y: 0.5 },
     rotationRadians: 0,
     scale: 1,
+    createdAt: 0,
   };
 
   describe('hitTestBody', () => {
@@ -176,6 +177,7 @@ describe('PolygonInteractionController — scaling', () => {
     position: { x: 0.5, y: 0.5 },
     rotationRadians: 0,
     scale: 1,
+    createdAt: 0,
   };
 
   it('should report the grabbed corner index, when the pointer is on a scale handle', () => {

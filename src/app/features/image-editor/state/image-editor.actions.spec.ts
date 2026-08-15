@@ -9,6 +9,7 @@ describe('image-editor actions', () => {
       position: { x: 0.5, y: 0.5 },
       rotationRadians: 0,
       scale: 1,
+      createdAt: 0,
     };
     const action = ImageEditorActions.polygonCreated({ polygon });
 

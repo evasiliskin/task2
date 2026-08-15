@@ -1,6 +1,7 @@
 import { Injectable, Signal, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
+import { CLOCK } from '@core/time/clock.token';
 import { createPolygonFromPoints } from './domain/geometry/create-polygon-from-points';
 import { NormalizedPoint } from './domain/normalized-point.model';
 import { Polygon } from './domain/polygon.model';
@@ -12,12 +13,18 @@ import { imageEditorFeature } from './state/image-editor.reducer';
 export class ImageEditorFacade {
   private readonly store = inject(Store);
   private readonly nextPolygonId = inject(POLYGON_ID);
+  private readonly now = inject(CLOCK);
 
   private readonly polygons = toSignal(this.store.select(imageEditorFeature.selectAll), {
     requireSync: true,
   });
   private readonly selectedPolygonId = toSignal(
     this.store.select(imageEditorFeature.selectSelectedPolygonId),
+    { requireSync: true },
+  );
+
+  readonly isAtCapacity = toSignal(
+    this.store.select(imageEditorFeature.selectIsAtPolygonCapacity),
     { requireSync: true },
   );
 
@@ -36,7 +43,7 @@ export class ImageEditorFacade {
   createPolygon(rawPoints: readonly NormalizedPoint[], imageId: string): void {
     this.store.dispatch(
       ImageEditorActions.polygonCreated({
-        polygon: createPolygonFromPoints(rawPoints, imageId, this.nextPolygonId()),
+        polygon: createPolygonFromPoints(rawPoints, imageId, this.nextPolygonId(), this.now()),
       }),
     );
   }

@@ -7,4 +7,6 @@ export interface Polygon {
   readonly position: NormalizedPoint;
   readonly rotationRadians: number;
   readonly scale: number;
+  /** Wall-clock creation time, used for deterministic capacity eviction. */
+  readonly createdAt: number;
 }

@@ -8,7 +8,7 @@ describe('createPolygonFromPoints', () => {
       { x: 2, y: 3 },
     ];
 
-    const polygon = createPolygonFromPoints(rawPoints, 'image-1', 'polygon-1');
+    const polygon = createPolygonFromPoints(rawPoints, 'image-1', 'polygon-1', 0);
 
     expect(polygon).toEqual({
       id: 'polygon-1',
@@ -21,6 +21,7 @@ describe('createPolygonFromPoints', () => {
       position: { x: 2, y: 1 },
       rotationRadians: 0,
       scale: 1,
+      createdAt: 0,
     });
   });
 
@@ -30,7 +31,7 @@ describe('createPolygonFromPoints', () => {
       { x: 1, y: 1 },
     ];
 
-    expect(() => createPolygonFromPoints(rawPoints, 'image-1', 'polygon-1')).toThrow(
+    expect(() => createPolygonFromPoints(rawPoints, 'image-1', 'polygon-1', 0)).toThrow(
       'createPolygonFromPoints requires at least 3 points',
     );
   });
@@ -44,6 +45,7 @@ describe('createPolygonFromPoints', () => {
       ],
       'image-1',
       'polygon-7',
+      0,
     );
 
     expect(polygon.id).toBe('polygon-7');

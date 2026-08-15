@@ -68,6 +68,11 @@
       >
         Draw polygon
       </button>
+      @if (isAtCapacity()) {
+        <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
+          Polygon limit reached — drawing another removes the oldest one.
+        </span>
+      }
       @if (polygons().length > 0) {
         <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
           @if (selectedIndex() >= 0) {

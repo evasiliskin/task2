@@ -69,6 +69,7 @@ function squarePolygon(id: string): Polygon {
     position: { x: 0.5, y: 0.5 },
     rotationRadians: 0,
     scale: 1,
+    createdAt: 0,
   };
 }
 
@@ -149,6 +150,7 @@ describe('PolygonCanvas', () => {
   function renderCanvas(props: {
     polygons: readonly Polygon[];
     selectedPolygon: Polygon | null;
+    isAtCapacity?: boolean;
   }): ComponentFixture<PolygonCanvas> {
     TestBed.configureTestingModule({
       imports: [PolygonCanvas],
@@ -159,6 +161,9 @@ describe('PolygonCanvas', () => {
     fixture.componentRef.setInput('imageAlt', 'A test image');
     fixture.componentRef.setInput('polygons', props.polygons);
     fixture.componentRef.setInput('selectedPolygon', props.selectedPolygon);
+    if (props.isAtCapacity !== undefined) {
+      fixture.componentRef.setInput('isAtCapacity', props.isAtCapacity);
+    }
     fixture.detectChanges();
     fixture.detectChanges();
     return fixture;
@@ -489,6 +494,18 @@ describe('PolygonCanvas', () => {
 
     expect(deletedSpy).toHaveBeenCalledWith('p1');
     expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
+  });
+
+  it('should show the capacity hint, when isAtCapacity is true', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null, isAtCapacity: true });
+
+    expect(fixture.nativeElement.textContent).toContain('Polygon limit reached');
+  });
+
+  it('should not show the capacity hint, when isAtCapacity is false', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null, isAtCapacity: false });
+
+    expect(fixture.nativeElement.textContent).not.toContain('Polygon limit reached');
   });
 
   it('should be keyboard-focusable with an accessible name describing how to start drawing, when no polygon exists yet', () => {

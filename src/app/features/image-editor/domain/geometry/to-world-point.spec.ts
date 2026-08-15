@@ -10,6 +10,7 @@ describe('toWorldPoint', () => {
       position: { x: 5, y: 5 },
       rotationRadians: 0,
       scale: 1,
+      createdAt: 0,
     };
 
     expect(toWorldPoint(polygon.points[0], polygon, 1)).toEqual({ x: 4, y: 5 });
@@ -23,6 +24,7 @@ describe('toWorldPoint', () => {
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
       scale: 1,
+      createdAt: 0,
     };
 
     const result = toWorldPoint(polygon.points[0], polygon, 1);
@@ -39,6 +41,7 @@ describe('toWorldPoint', () => {
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
       scale: 1,
+      createdAt: 0,
     };
 
     const result = toWorldPoint(polygon.points[0], polygon, 2);

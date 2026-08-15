@@ -20,6 +20,7 @@ export class ImagePreviewDialog {
   protected readonly selectedPolygon = this.imageEditorFacade.selectedPolygonFor(
     this.target.imageId,
   );
+  protected readonly isAtCapacity = this.imageEditorFacade.isAtCapacity;
 
   protected onPolygonDrawn(points: readonly NormalizedPoint[]): void {
     this.imageEditorFacade.createPolygon(points, this.target.imageId);

@@ -17,6 +17,7 @@ function polygonFixture(id: string, imageId: string): Polygon {
     position: { x: 0.5, y: 0.5 },
     rotationRadians: 0,
     scale: 1,
+    createdAt: 0,
   };
 }
 
@@ -158,6 +159,7 @@ describe('image-editor reducer', () => {
               position: { x: 0.5, y: 0.5 },
               rotationRadians: 0,
               scale: 1,
+              createdAt: 0,
             },
           }),
         ),
@@ -167,6 +169,38 @@ describe('image-editor reducer', () => {
     expect(state.ids).toHaveLength(MAX_STORED_POLYGONS);
     expect(state.entities['p0']).toBeUndefined();
     expect(state.entities[`p${MAX_STORED_POLYGONS}`]).toBeDefined();
+  });
+
+  it('should evict the oldest polygon by createdAt, when the store exceeds capacity', () => {
+    const polygonAt = (id: string, createdAt: number): Polygon => ({
+      id,
+      imageId: 'i1',
+      points: [
+        { x: -0.1, y: -0.1 },
+        { x: 0.1, y: -0.1 },
+        { x: 0, y: 0.1 },
+      ],
+      position: { x: 0.5, y: 0.5 },
+      rotationRadians: 0,
+      scale: 1,
+      createdAt,
+    });
+
+    let state = initialState;
+    for (let index = 0; index < MAX_STORED_POLYGONS; index++) {
+      state = reducer(
+        state,
+        ImageEditorActions.polygonCreated({ polygon: polygonAt(`p${index}`, 1_000 - index) }),
+      );
+    }
+    state = reducer(
+      state,
+      ImageEditorActions.polygonCreated({ polygon: polygonAt('newest', 5_000) }),
+    );
+
+    expect(state.ids).toHaveLength(MAX_STORED_POLYGONS);
+    expect(state.entities[`p${MAX_STORED_POLYGONS - 1}`]).toBeUndefined();
+    expect(state.entities['newest']).toBeDefined();
   });
 });
 
