@@ -3,6 +3,7 @@
     [query]="queryText()"
     [suggestions]="suggestions()"
     (queryChange)="onQueryChange($event)"
+    (suggestionSelected)="onSuggestionSelected($event)"
   />
 
   @if (dialogFailed()) {

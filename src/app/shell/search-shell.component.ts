@@ -101,6 +101,11 @@ export class SearchShell {
     this.searchFacade.queryChanged(value);
   }
 
+  protected onSuggestionSelected(query: string): void {
+    this.queryText.set(query);
+    this.searchFacade.querySubmitted(query);
+  }
+
   protected onRetry(): void {
     this.searchFacade.retry();
   }

@@ -10,7 +10,7 @@ test('suggests a past query and runs it when selected', async ({ page }) => {
   await expect(page.locator('.search-result-item').first()).toBeVisible();
 
   await page.getByLabel('Search images').fill('moun');
-  const suggestion = page.getByRole('menuitem', { name: 'mountains' });
+  const suggestion = page.getByRole('option', { name: 'mountains' });
   await expect(suggestion).toBeVisible();
 
   await suggestion.click();

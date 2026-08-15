@@ -5,15 +5,20 @@
       id="search-input-field"
       nz-input
       type="search"
-      role="combobox"
       name="searchQuery"
+      role="combobox"
       autocomplete="off"
-      aria-controls="search-suggestions"
-      [attr.aria-expanded]="suggestions().length > 0"
+      aria-autocomplete="list"
+      aria-haspopup="listbox"
+      [attr.aria-controls]="listboxId"
+      [attr.aria-expanded]="isOpen()"
+      [attr.aria-activedescendant]="activeOptionId()"
       placeholder='Try "mountains" or "cats"'
-      [nzAutocomplete]="auto"
-      [ngModel]="query()"
-      (ngModelChange)="queryChange.emit($event)"
+      [value]="query()"
+      (input)="onInput($event)"
+      (focus)="onFocus()"
+      (blur)="onBlur()"
+      (keydown)="onKeyDown($event)"
     />
     @if (query().length > 0) {
       <button
@@ -22,15 +27,38 @@
         nzType="text"
         nzSize="small"
         class="search-input__clear"
-        (click)="queryChange.emit('')"
+        (click)="onClear()"
       >
         Clear search
       </button>
     }
+    <!--
+      Options are intentionally not focusable and carry no key handlers: in the ARIA combobox
+      pattern focus stays on the input and navigation is reported via aria-activedescendant,
+      which onKeyDown implements. mousedown is prevented so clicking an option does not blur
+      the input and close the list before the click lands.
+    -->
+    <ul
+      class="search-input__listbox"
+      role="listbox"
+      aria-label="Past searches"
+      [id]="listboxId"
+      [hidden]="!isOpen()"
+      (mousedown)="$event.preventDefault()"
+    >
+      @for (suggestion of suggestions(); track suggestion; let index = $index) {
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+        <li
+          class="search-input__option"
+          role="option"
+          [id]="optionIdPrefix + '-' + index"
+          [class.search-input__option--active]="index === activeIndex()"
+          [attr.aria-selected]="index === activeIndex()"
+          (click)="select(suggestion)"
+        >
+          {{ suggestion }}
+        </li>
+      }
+    </ul>
   </div>
-  <nz-autocomplete #auto id="search-suggestions">
-    @for (suggestion of suggestions(); track suggestion) {
-      <nz-auto-option [nzValue]="suggestion">{{ suggestion }}</nz-auto-option>
-    }
-  </nz-autocomplete>
 </div>

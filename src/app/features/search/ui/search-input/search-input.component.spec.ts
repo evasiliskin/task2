@@ -85,4 +85,67 @@ describe('SearchInput', () => {
     expect(clearButton(filledFixture)).not.toBeNull();
     expect(heightWithButton).toBe(heightWithoutButton);
   });
+
+  it('should report the listbox as collapsed, when the input is not focused', () => {
+    const fixture = renderInput();
+    const input = inputElement(fixture);
+    fixture.componentRef.setInput('suggestions', ['mountains']);
+    fixture.detectChanges();
+
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('should report the listbox as expanded, when focused with suggestions available', () => {
+    const fixture = renderInput();
+    const input = inputElement(fixture);
+    fixture.componentRef.setInput('suggestions', ['mountains']);
+    input.dispatchEvent(new FocusEvent('focus'));
+    fixture.detectChanges();
+
+    expect(input.getAttribute('aria-expanded')).toBe('true');
+    expect(input.getAttribute('aria-controls')).toBe(
+      fixture.nativeElement.querySelector('[role="listbox"]').id,
+    );
+  });
+
+  it('should point aria-activedescendant at the active option, when navigating with the arrow keys', () => {
+    const fixture = renderInput();
+    const input = inputElement(fixture);
+    fixture.componentRef.setInput('suggestions', ['mountains', 'moss']);
+    input.dispatchEvent(new FocusEvent('focus'));
+    fixture.detectChanges();
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    fixture.detectChanges();
+
+    const options = fixture.nativeElement.querySelectorAll('[role="option"]');
+    expect(input.getAttribute('aria-activedescendant')).toBe(options[0].id);
+    expect(options[0].getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('should emit the active suggestion, when Enter is pressed', () => {
+    const fixture = renderInput();
+    const input = inputElement(fixture);
+    const selected = vi.fn();
+    fixture.componentRef.setInput('suggestions', ['mountains', 'moss']);
+    fixture.componentInstance.suggestionSelected.subscribe(selected);
+    input.dispatchEvent(new FocusEvent('focus'));
+    fixture.detectChanges();
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+    expect(selected).toHaveBeenCalledWith('mountains');
+  });
+
+  it('should collapse the listbox, when Escape is pressed', () => {
+    const fixture = renderInput();
+    const input = inputElement(fixture);
+    fixture.componentRef.setInput('suggestions', ['mountains']);
+    input.dispatchEvent(new FocusEvent('focus'));
+    fixture.detectChanges();
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+  });
 });
