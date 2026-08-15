@@ -26,4 +26,18 @@ describe('computeCentroid', () => {
   it('should throw an error, when given an empty array', () => {
     expect(() => computeCentroid([])).toThrow('computeCentroid requires at least one point');
   });
+
+  it('should return the vertex mean rather than the area centroid, when the polygon is irregular', () => {
+    // An L-shaped polygon whose vertex mean and area centroid differ measurably.
+    const points = [
+      { x: 0, y: 0 },
+      { x: 3, y: 0 },
+      { x: 3, y: 1 },
+      { x: 1, y: 1 },
+      { x: 1, y: 3 },
+      { x: 0, y: 3 },
+    ];
+
+    expect(computeCentroid(points)).toEqual({ x: 8 / 6, y: 8 / 6 });
+  });
 });

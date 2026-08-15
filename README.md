@@ -248,11 +248,27 @@ a native `<img>`; the canvas only draws the polygon and its rotate handle.
   it (via NG-ZORRO's modal, which traps focus while open) restores focus to
   that element.
 
+**Rotation pivot — vertex mean, not area centroid.** `computeCentroid` returns the arithmetic
+mean of the vertices. Both it and the area centroid are legitimate "centers" for the assignment's
+"rotate the polygon around its center", and the vertex mean is preferred here because it is
+O(n) with no signed-area special cases and stays well-defined for the self-intersecting polygons
+that free-hand drawing can produce — the area centroid divides by a signed area that is zero for
+degenerate shapes a user can genuinely draw. `compute-centroid.spec.ts` asserts this definition
+explicitly so a future change is deliberate.
+
 ## Persistence
 
 Session-only, in-memory NgRx state — no `localStorage`/IndexedDB sync layer.
 Search history and drawn polygons persist across dialog opens/closes and
 navigation within a session, but reset on a full page reload.
+
+## Development process
+
+This project was built with AI-assisted development under written, reviewed plans. The plans
+live in `docs/superpowers/plans/` and the reusable engineering guidance in `.ai/skills/`; both
+are gitignored, so a clone contains only the application. Every architectural decision recorded
+in this README — the coordinate model, the cancellation strategy, the pagination guards, the
+ARIA combobox rewrite — was reviewed and is defended on its merits, not adopted by default.
 
 ## Known limitations / trade-offs
 
@@ -304,17 +320,22 @@ roughly one stylesheet's worth of initial CSS in exchange for a correct,
 budget-clean build.
 
 The initial-bundle budget is `900kB` (raw), not the framework default of
-`500kB`. The measured floor after deduplicating `@angular/cdk` and removing
-`lodash` is `868.01kB` raw / `200.69kB` transfer — mostly eagerly-loaded
-NG-ZORRO modules and Angular CDK. Two honest trims were tried and both
-failed: removing the eager `NzModalModule` provider import breaks
-`NzModalService` injection (`NG0201`), and pruning the eager modal
-stylesheet only saves ~5kB while leaving the dialog unstyled (see the
-paragraph above). Raising the budget to hide a real problem is not
-acceptable, but a budget that never reflects an honestly-reduced floor is
-equally useless as a signal — `900kB` gives headroom over the measured
-`868.01kB` so the warning fires only on a genuine regression, not on the
-current baseline.
+`500kB`. The measured floor after deduplicating `@angular/cdk`, removing
+`lodash`, and replacing `nz-autocomplete` with a first-party suggestions
+combobox is `797.39kB` raw (down from `868.01kB` before that combobox
+rewrite) — mostly eagerly-loaded NG-ZORRO modules and Angular CDK.
+Two honest trims were tried and both failed: removing the eager
+`NzModalModule` provider import breaks `NzModalService` injection
+(`NG0201`), and pruning the eager modal stylesheet only saves ~5kB while
+leaving the dialog unstyled (see the paragraph above). Raising the budget to
+hide a real problem is not acceptable, but a budget that never reflects an
+honestly-reduced floor is equally useless as a signal — `900kB` gives
+headroom over the measured `797.39kB` so the warning fires only on a genuine
+regression, not on the current baseline.
+
+Replacing `nz-autocomplete` with a first-party suggestions combobox (required for a valid
+ARIA 1.2 combobox — `nz-auto-option` hard-codes `role="menuitem"`, which a combobox may not own)
+also removed `ng-zorro-antd/auto-complete/style/index.min.css` from the eager `styles` array.
 
 The search-results cache key is built as
 `` `${toKebabCase(canonicalQuery)}::${encodeURIComponent(canonicalQuery)}::${page}` ``,
