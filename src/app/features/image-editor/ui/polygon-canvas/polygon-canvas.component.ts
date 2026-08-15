@@ -17,35 +17,27 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { fromEvent, merge } from 'rxjs';
 import { map, share, take, takeUntil } from 'rxjs/operators';
-import { CanvasBoxSize, PixelPoint } from '../../domain/geometry/coordinate-mapping.model';
+import { PixelPoint } from '../../domain/geometry/coordinate-mapping.model';
 import { MIN_POLYGON_POINTS } from '../../domain/geometry/create-polygon-from-points';
 import { toNormalizedPoint } from '../../domain/geometry/to-normalized-point';
 import { NormalizedPoint } from '../../domain/normalized-point.model';
 import { Polygon } from '../../domain/polygon.model';
 import {
   DragSession,
-  KEYBOARD_NUDGE_STEP,
   KEYBOARD_ROTATION_STEP_RADIANS,
-  KEYBOARD_SCALE_STEP,
   RotateSession,
   ScaleSession,
 } from '../../interaction/polygon-interaction-controller';
 import { POLYGON_INTERACTION_CONTROLLER } from '../../interaction/polygon-interaction.token';
+import { CanvasRenderScheduler } from '../../rendering/canvas-render-scheduler';
 import { POLYGON_CANVAS_RENDERER } from '../../rendering/polygon-renderer.token';
+import { CanvasViewportTracker } from './canvas-viewport-tracker';
+import { toPolygonCommand } from './polygon-keyboard-commands';
 
 type ActiveGesture =
   | { readonly kind: 'drag'; readonly session: DragSession }
   | { readonly kind: 'rotate'; readonly session: RotateSession }
   | { readonly kind: 'scale'; readonly session: ScaleSession };
-
-interface RenderFrame {
-  readonly size: CanvasBoxSize;
-  readonly drawPoints: readonly NormalizedPoint[];
-  readonly mode: 'idle' | 'drawing';
-  readonly polygons: readonly Polygon[];
-  readonly selectedId: string | null;
-  readonly pixelRatio: number;
-}
 
 const KEYBOARD_ROTATION_STEP_DEGREES = Math.round((KEYBOARD_ROTATION_STEP_RADIANS * 180) / Math.PI);
 const EMPTY_DRAW_POINTS: readonly NormalizedPoint[] = [];
@@ -93,7 +85,6 @@ export class PolygonCanvas {
       ? polygons.map((polygon) => (polygon.id === draft.id ? draft : polygon))
       : polygons;
   });
-  protected readonly canvasUnavailable = signal(false);
   protected readonly imageStatus = signal<'loading' | 'loaded' | 'error'>('loading');
   protected readonly canvasAriaLabel = computed(() => {
     if (this.mode() === 'drawing') {
@@ -109,48 +100,28 @@ export class PolygonCanvas {
       : `Polygon editor. ${count} polygon(s), none selected. Click a polygon to select it.`;
   });
 
-  private readonly boxSize = signal<CanvasBoxSize>({ width: 0, height: 0 });
-  private readonly pixelRatio = signal(globalThis.devicePixelRatio || 1);
   private readonly imageEl = viewChild.required<ElementRef<HTMLImageElement>>('imageEl');
   private readonly canvasEl = viewChild.required<ElementRef<HTMLCanvasElement>>('canvasEl');
 
   private readonly controller = inject(POLYGON_INTERACTION_CONTROLLER);
-  private readonly renderer = inject(POLYGON_CANVAS_RENDERER);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private activeGesture: ActiveGesture | null = null;
 
   private readonly destroyRef = inject(DestroyRef);
-  private context: CanvasRenderingContext2D | null = null;
-  private contextResolved = false;
-  private pendingFrame: RenderFrame | null = null;
-  private frameHandle: number | null = null;
+  private readonly scheduler = new CanvasRenderScheduler(inject(POLYGON_CANVAS_RENDERER));
+  protected readonly canvasUnavailable = this.scheduler.contextUnavailable;
+
+  private readonly viewport = new CanvasViewportTracker(() => this.imageEl().nativeElement);
+  private readonly boxSize = this.viewport.boxSize;
+  private readonly pixelRatio = this.viewport.pixelRatio;
 
   constructor() {
-    effect((onCleanup) => {
-      const element = this.imageEl().nativeElement;
-      const observer = new ResizeObserver(([entry]) => {
-        this.boxSize.set({ width: entry.contentRect.width, height: entry.contentRect.height });
-      });
-      observer.observe(element);
-      onCleanup(() => observer.disconnect());
-    });
-
-    effect((onCleanup) => {
-      const query = globalThis.matchMedia?.(`(resolution: ${this.pixelRatio()}dppx)`);
-      if (!query) {
-        return;
-      }
-      const onChange = () => this.pixelRatio.set(globalThis.devicePixelRatio || 1);
-      query.addEventListener('change', onChange);
-      onCleanup(() => query.removeEventListener('change', onChange));
-    });
-
     effect(() => {
       const size = this.boxSize();
       if (size.width <= 0 || size.height <= 0) {
         return;
       }
-      this.scheduleRender({
+      this.scheduler.schedule(this.canvasEl().nativeElement, {
         size,
         drawPoints: this.drawPoints(),
         mode: this.mode(),
@@ -160,12 +131,7 @@ export class PolygonCanvas {
       });
     });
 
-    this.destroyRef.onDestroy(() => {
-      if (this.frameHandle !== null) {
-        cancelAnimationFrame(this.frameHandle);
-        this.frameHandle = null;
-      }
-    });
+    this.destroyRef.onDestroy(() => this.scheduler.destroy());
   }
 
   protected onPointerDown(event: PointerEvent): void {
@@ -378,50 +344,28 @@ export class PolygonCanvas {
       return;
     }
 
-    switch (event.key) {
-      case 'ArrowUp':
-        event.preventDefault();
-        this.commitNudge(selected, { x: 0, y: -KEYBOARD_NUDGE_STEP }, 'up');
+    const command = toPolygonCommand(event.key);
+    if (!command) {
+      return;
+    }
+
+    event.preventDefault();
+
+    switch (command.kind) {
+      case 'move':
+        this.commitNudge(selected, command.delta, command.direction);
         return;
-      case 'ArrowDown':
-        event.preventDefault();
-        this.commitNudge(selected, { x: 0, y: KEYBOARD_NUDGE_STEP }, 'down');
+      case 'rotate':
+        this.commitRotate(selected, command.deltaRadians, command.direction);
         return;
-      case 'ArrowLeft':
-        event.preventDefault();
-        this.commitNudge(selected, { x: -KEYBOARD_NUDGE_STEP, y: 0 }, 'left');
+      case 'scale':
+        this.commitScale(selected, command.factor);
         return;
-      case 'ArrowRight':
-        event.preventDefault();
-        this.commitNudge(selected, { x: KEYBOARD_NUDGE_STEP, y: 0 }, 'right');
-        return;
-      case '[':
-        event.preventDefault();
-        this.commitRotate(selected, -KEYBOARD_ROTATION_STEP_RADIANS, 'counterclockwise');
-        return;
-      case ']':
-        event.preventDefault();
-        this.commitRotate(selected, KEYBOARD_ROTATION_STEP_RADIANS, 'clockwise');
-        return;
-      case '+':
-      case '=':
-        event.preventDefault();
-        this.commitScale(selected, KEYBOARD_SCALE_STEP);
-        return;
-      case '-':
-        event.preventDefault();
-        this.commitScale(selected, 1 / KEYBOARD_SCALE_STEP);
-        return;
-      case 'Escape':
-        event.preventDefault();
+      case 'deselect':
         this.polygonSelected.emit(null);
         return;
-      case 'Delete':
-      case 'Backspace':
-        event.preventDefault();
+      case 'delete':
         this.onDeletePolygon(selected.id);
-        return;
-      default:
         return;
     }
   }
@@ -459,55 +403,5 @@ export class PolygonCanvas {
     }
     this.polygonDrawn.emit(points);
     this.mode.set('idle');
-  }
-
-  private scheduleRender(frame: RenderFrame): void {
-    this.pendingFrame = frame;
-    if (this.frameHandle !== null) {
-      return;
-    }
-    this.frameHandle = requestAnimationFrame(() => {
-      this.frameHandle = null;
-      const nextFrame = this.pendingFrame;
-      this.pendingFrame = null;
-      if (nextFrame) {
-        this.draw(nextFrame);
-      }
-    });
-  }
-
-  private draw(frame: RenderFrame): void {
-    const canvas = this.canvasEl().nativeElement;
-    const pixelRatio = frame.pixelRatio;
-    const backingWidth = Math.round(frame.size.width * pixelRatio);
-    const backingHeight = Math.round(frame.size.height * pixelRatio);
-
-    if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
-      canvas.width = backingWidth;
-      canvas.height = backingHeight;
-    }
-
-    const context = this.resolveContext(canvas);
-    if (!context) {
-      return;
-    }
-
-    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-
-    if (frame.mode === 'drawing') {
-      this.renderer.render(context, frame.polygons, null, frame.size);
-      this.renderer.renderDrawPreview(context, frame.drawPoints, frame.size);
-    } else {
-      this.renderer.render(context, frame.polygons, frame.selectedId, frame.size);
-    }
-  }
-
-  private resolveContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
-    if (!this.contextResolved) {
-      this.context = canvas.getContext('2d');
-      this.contextResolved = true;
-      this.canvasUnavailable.set(this.context === null);
-    }
-    return this.context;
   }
 }
