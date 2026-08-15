@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
-import { Subject } from 'rxjs';
+import { Subject, merge } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { isMeaningfulQuery, normalizeSearchQuery, toCanonicalQuery } from '@shared/search-query';
 import { SEARCH_DEBOUNCE_MS } from './domain/search-debounce';
@@ -12,13 +12,13 @@ import { selectSearchViewModel } from './state/search.reducer';
 export class SearchFacade {
   private readonly store = inject(Store);
   private readonly queryInput$ = new Subject<string>();
+  private readonly querySubmitted$ = new Subject<string>();
 
   readonly viewModel = toSignal(this.store.select(selectSearchViewModel), { requireSync: true });
 
   constructor() {
-    this.queryInput$
+    merge(this.queryInput$.pipe(debounceTime(SEARCH_DEBOUNCE_MS)), this.querySubmitted$)
       .pipe(
-        debounceTime(SEARCH_DEBOUNCE_MS),
         map(normalizeSearchQuery),
         distinctUntilChanged(
           (previous, current) => toCanonicalQuery(previous) === toCanonicalQuery(current),
@@ -36,6 +36,10 @@ export class SearchFacade {
 
   queryChanged(query: string): void {
     this.queryInput$.next(query);
+  }
+
+  querySubmitted(query: string): void {
+    this.querySubmitted$.next(query);
   }
 
   loadNextPage(): void {

@@ -58,4 +58,20 @@ describe('SearchFacade', () => {
     expect(store.dispatch).toHaveBeenCalledTimes(1);
     expect(store.dispatch).toHaveBeenCalledWith(SearchActions.searchRequested({ query: 'cats' }));
   });
+
+  it('should dispatch immediately, when a query is submitted rather than typed', () => {
+    facade.querySubmitted('mountains');
+
+    expect(store.dispatch).toHaveBeenCalledWith(
+      SearchActions.searchRequested({ query: 'mountains' }),
+    );
+  });
+
+  it('should not dispatch a second search, when the input echoes a submitted query', () => {
+    facade.querySubmitted('mountains');
+    facade.queryChanged('mountains');
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+
+    expect(store.dispatch).toHaveBeenCalledTimes(1);
+  });
 });
