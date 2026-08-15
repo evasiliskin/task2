@@ -28,9 +28,8 @@ the CDK are installed and both reach the bundle.
 `lodash` was removed from the project entirely — it is not a dependency and
 there is nothing CommonJS in the app, so `angular.json` has no
 `allowedCommonJsDependencies` entry. The search-results cache key used to be
-prefixed with `lodash.kebabCase`; it's now a small local `toKebabCase`
-helper (`src/app/features/search/data-access/to-kebab-case.ts`) instead. See
-Performance & bundle below for how the key is actually built.
+prefixed with `lodash.kebabCase`; that prefix has since been dropped as
+redundant. See Performance & bundle below for how the key is actually built.
 
 ## Public API
 
@@ -140,8 +139,11 @@ updates that entry instead of duplicating it. `suggestionsFor()` breaks both the
 typed input and each history entry into words and matches when every typed
 word is a prefix of some word in the historical entry — so "mountain lake"
 suggests a past "lake mountain view" query, not just exact substring matches.
-Suggestions are shown via an NG-ZORRO autocomplete dropdown on the search
-input.
+Suggestions are shown via a first-party ARIA-correct combobox on the search
+input: the input carries `role="combobox"` and `aria-expanded`/
+`aria-controls`/`aria-activedescendant` wired to real state, and the
+suggestion list is a `role="listbox"` of `role="option"` elements — see
+Performance & bundle below for why this replaced `nz-autocomplete`.
 
 ## Polygon editor
 
@@ -338,19 +340,17 @@ ARIA 1.2 combobox — `nz-auto-option` hard-codes `role="menuitem"`, which a com
 also removed `ng-zorro-antd/auto-complete/style/index.min.css` from the eager `styles` array.
 
 The search-results cache key is built as
-`` `${toKebabCase(canonicalQuery)}::${encodeURIComponent(canonicalQuery)}::${page}` ``,
-where `canonicalQuery` is `toCanonicalQuery(query)` (trim + collapse
-whitespace + lowercase) and `toKebabCase` is a small local helper
-(`data-access/to-kebab-case.ts`) — see Dependency decisions above for why
-that's local instead of a `lodash` import. Canonicalization means `Cats` and
-`cats` share one cache entry, but the key isn't collapsed further than that:
-the paired `encodeURIComponent(canonicalQuery)` segment keeps
-punctuation-distinct queries (e.g. `cat dog` vs `cat-dog`) in separate
+`` `${encodeURIComponent(toCanonicalQuery(query))}::${page}` ``
+(`data-access/search-results-cache.service.ts`), where `toCanonicalQuery`
+(trim + collapse whitespace + lowercase) means `Cats` and `cats` share one
+cache entry, but the key isn't collapsed further than that: wrapping the
+canonical query in `encodeURIComponent` rather than reducing it further
+keeps punctuation-distinct queries (e.g. `cat dog` vs `cat-dog`) in separate
 entries.
 
 ## Testing strategy
 
-64 test files / 394 tests, all passing (`pnpm run test:ci`). Prioritized per
+66 test files / 434 tests, all passing (`pnpm run test:ci`). Prioritized per
 the local (gitignored) `.ai/skills/testing/SKILL.md`:
 
 1. Geometry pure functions — table-driven tests for rotation, translation,
@@ -365,16 +365,21 @@ the local (gitignored) `.ai/skills/testing/SKILL.md`:
 6. Critical component interactions — e.g. virtual-scroll near-end trigger
    dispatches next-page, dialog restores a saved polygon, keyboard editing.
 
-There's also a Playwright end-to-end suite across four spec files, sharing
+There's also a Playwright end-to-end suite across six spec files, sharing
 mock setup from `e2e/openverse-mock.ts`: `search-pagination-polygon.spec.ts`
 (search → pagination → dialog → polygon draw/drag → reopen/restoration, at
 three viewport heights), `polygon-multi-and-scale.spec.ts` (drawing two
 polygons on one image, scaling one via keyboard, and restoring both on
 reopen), `polygon-resize-ratio.spec.ts` (a rotated, scaled polygon's ink
-bounds stay proportional to the canvas box across a viewport resize), and
+bounds stay proportional to the canvas box across a viewport resize),
 `search-suggestions.spec.ts` (a past query is suggested and re-run on
-selection) — 6 tests total, all passing. Run it with `pnpm run e2e`
-(requires `npx playwright install chromium` once, beforehand). It is
+selection), `polygon-touch.mobile.spec.ts` (a touch drag on the polygon
+canvas completes without raising a page error), and
+`search-layout.mobile.spec.ts` (search results stay usable and free of
+horizontal overflow on a phone viewport) — 8 tests total (the two `.mobile`
+specs run under a `mobile-chrome` project, the rest under `chromium`), all
+passing. Run it with `pnpm run e2e` (requires
+`npx playwright install chromium` once, beforehand). It is
 deliberately **not** part of `pnpm run check` or the pre-push hook, since it
 needs a running dev server and an installed browser rather than just Node.
 

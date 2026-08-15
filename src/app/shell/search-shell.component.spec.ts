@@ -71,6 +71,7 @@ function makeFacadeStub(overrides: Partial<SearchViewModel> = {}) {
   return {
     viewModel: signal(viewModel),
     queryChanged: vi.fn(),
+    querySubmitted: vi.fn(),
     loadNextPage: vi.fn(),
     retry: vi.fn(),
   };
@@ -233,6 +234,21 @@ describe('SearchShell view rendering', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Could not open the image preview');
+  });
+
+  it('should call both querySubmitted and queryChanged with the same query, when a suggestion is selected', () => {
+    configure({ status: 'idle' });
+    const fixture = TestBed.createComponent(SearchShell);
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance as unknown as {
+      onSuggestionSelected: (query: string) => void;
+    };
+    component.onSuggestionSelected('mountains');
+
+    const facade = TestBed.inject(SearchFacade);
+    expect(facade.querySubmitted).toHaveBeenCalledWith('mountains');
+    expect(facade.queryChanged).toHaveBeenCalledWith('mountains');
   });
 });
 

@@ -104,6 +104,13 @@ export class SearchShell {
   protected onSuggestionSelected(query: string): void {
     this.queryText.set(query);
     this.searchFacade.querySubmitted(query);
+    // Re-arm the debounced pipeline with the same value that was just submitted, so a
+    // pending queryInput$ timer from earlier keystrokes (e.g. typing "moun" before picking
+    // the "mountains" suggestion) resolves to an echo of the already-dispatched query
+    // instead of a stale one. distinctUntilChanged then suppresses the redundant dispatch —
+    // see SearchFacade's 'should not dispatch a second search, when the input echoes a
+    // submitted query' test.
+    this.searchFacade.queryChanged(query);
   }
 
   protected onRetry(): void {
