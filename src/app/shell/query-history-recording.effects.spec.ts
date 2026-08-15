@@ -3,8 +3,21 @@ import { provideMockActions } from '@ngrx/effects/testing';
 import { ReplaySubject } from 'rxjs';
 import { QueryHistoryRecordingEffects } from './query-history-recording.effects';
 import { QueryHistoryActions } from '@query-history';
-import { SearchApiActions } from '@search';
+import { SearchApiActions, type SearchResult } from '@search';
 import { CLOCK } from '@core/time/clock.token';
+
+function makeResult(id: string): SearchResult {
+  return {
+    id,
+    title: id,
+    imageUrl: '',
+    thumbnailUrl: '',
+    width: 0,
+    height: 0,
+    creator: null,
+    sourceUrl: '',
+  };
+}
 
 describe('QueryHistoryRecordingEffects', () => {
   let actions$: ReplaySubject<unknown>;
@@ -33,7 +46,7 @@ describe('QueryHistoryRecordingEffects', () => {
         SearchApiActions.loadResultsSuccess({
           query: 'cats',
           page: 1,
-          results: [],
+          results: [makeResult('1')],
           totalCount: 5,
           pageCount: 1,
         }),

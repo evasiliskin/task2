@@ -3,9 +3,22 @@ import { provideEffects } from '@ngrx/effects';
 import { provideState, provideStore, Store } from '@ngrx/store';
 import { firstValueFrom } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
-import { SearchApiActions } from '@search';
+import { SearchApiActions, type SearchResult } from '@search';
 import { QueryHistoryFacade, queryHistoryFeature } from '@query-history';
 import { QueryHistoryRecordingEffects } from './query-history-recording.effects';
+
+function makeResult(id: string): SearchResult {
+  return {
+    id,
+    title: id,
+    imageUrl: '',
+    thumbnailUrl: '',
+    width: 0,
+    height: 0,
+    creator: null,
+    sourceUrl: '',
+  };
+}
 
 function configure() {
   TestBed.configureTestingModule({
@@ -30,7 +43,7 @@ describe('query-history state integration (real store + real reducer + real effe
       SearchApiActions.loadResultsSuccess({
         query: 'cats',
         page: 1,
-        results: [],
+        results: [makeResult('1')],
         totalCount: 5,
         pageCount: 1,
       }),
@@ -78,7 +91,7 @@ describe('query-history state integration (real store + real reducer + real effe
       SearchApiActions.loadResultsSuccess({
         query: 'sentinel',
         page: 1,
-        results: [],
+        results: [makeResult('1')],
         totalCount: 1,
         pageCount: 1,
       }),
@@ -101,7 +114,7 @@ describe('query-history state integration (real store + real reducer + real effe
       SearchApiActions.loadResultsSuccess({
         query: 'Cats',
         page: 1,
-        results: [],
+        results: [makeResult('1')],
         totalCount: 5,
         pageCount: 1,
       }),
@@ -110,7 +123,7 @@ describe('query-history state integration (real store + real reducer + real effe
       SearchApiActions.loadResultsSuccess({
         query: 'cats',
         page: 1,
-        results: [],
+        results: [makeResult('1')],
         totalCount: 5,
         pageCount: 1,
       }),
@@ -124,5 +137,21 @@ describe('query-history state integration (real store + real reducer + real effe
     );
 
     expect(facade.entries().length).toBe(1);
+  });
+
+  it('should not record an entry, when the API reports results but none survived mapping', async () => {
+    const { store } = configure();
+
+    store.dispatch(
+      SearchApiActions.loadResultsSuccess({
+        query: 'cats',
+        page: 1,
+        results: [],
+        totalCount: 42,
+        pageCount: 3,
+      }),
+    );
+
+    expect(await firstValueFrom(store.select(queryHistoryFeature.selectAll))).toEqual([]);
   });
 });

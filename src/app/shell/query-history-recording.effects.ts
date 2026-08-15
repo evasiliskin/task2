@@ -13,7 +13,7 @@ export class QueryHistoryRecordingEffects {
   recordMeaningfulQuery$ = createEffect(() =>
     this.actions$.pipe(
       ofType(SearchApiActions.loadResultsSuccess),
-      filter(({ page, totalCount }) => isRecordableResult(page, totalCount)),
+      filter(({ page, results }) => isRecordableResult(page, results.length)),
       map(({ query }) => QueryHistoryActions.queryRecorded({ query, usedAt: this.now() })),
     ),
   );
