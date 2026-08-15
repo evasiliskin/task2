@@ -5,6 +5,16 @@
     (queryChange)="onQueryChange($event)"
   />
 
+  @if (dialogFailed()) {
+    <div class="search-shell__dialog-error" role="alert">
+      <nz-alert
+        nzType="error"
+        nzShowIcon
+        nzMessage="Could not open the image preview. Please try again."
+      />
+    </div>
+  }
+
   @let vm = viewModel();
 
   @if (vm.status === 'idle') {

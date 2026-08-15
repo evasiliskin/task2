@@ -12,6 +12,10 @@
   min-height: 0;
 }
 
+.search-shell__dialog-error {
+  margin-bottom: var(--app-space-4);
+}
+
 .search-shell__loading,
 .search-shell__idle {
   display: flex;

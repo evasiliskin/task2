@@ -215,13 +215,12 @@ describe('SearchShell view rendering', () => {
     });
   });
 
-  it('logs the error, when opening the image editor dialog fails', async () => {
+  it('should show a visible error message, when opening the image editor dialog fails', async () => {
     const selected: SearchResult = { ...noResult, imageUrl: 'https://x/full.jpg' };
     configure({ status: 'success', results: [selected], hasMoreResults: true });
     const imagePreviewDialog = TestBed.inject(ImagePreviewDialogService);
     const openError = new Error('failed to open dialog');
     (imagePreviewDialog.open as ReturnType<typeof vi.fn>).mockRejectedValue(openError);
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const fixture = TestBed.createComponent(SearchShell);
     fixture.detectChanges();
@@ -231,9 +230,9 @@ describe('SearchShell view rendering', () => {
 
     await Promise.resolve();
     await Promise.resolve();
+    fixture.detectChanges();
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(openError);
-    consoleErrorSpy.mockRestore();
+    expect(fixture.nativeElement.textContent).toContain('Could not open the image preview');
   });
 });
 
@@ -267,6 +266,7 @@ describe('SearchShell pagination decision', () => {
       onScrolled: (range: { firstVisibleIndex: number; visibleRowCount: number }) => void;
     };
     component.onScrolled({ firstVisibleIndex: 15, visibleRowCount: 0 });
+    fixture.detectChanges();
 
     const facade = TestBed.inject(SearchFacade);
     expect(facade.loadNextPage).toHaveBeenCalled();
@@ -308,5 +308,130 @@ describe('SearchShell pagination decision', () => {
 
     const facade = TestBed.inject(SearchFacade);
     expect(facade.loadNextPage).not.toHaveBeenCalled();
+  });
+});
+
+describe('SearchShell reactive pagination and dialog failure', () => {
+  let fixture: ReturnType<typeof TestBed.createComponent<SearchShell>>;
+  let component: SearchShell & {
+    onScrolled: (range: { firstVisibleIndex: number; visibleRowCount: number }) => void;
+    onResultSelected: (result: SearchResult) => void;
+  };
+  let viewModelSignal: ReturnType<typeof signal<SearchViewModel>>;
+  let loadNextPage: ReturnType<typeof vi.fn>;
+  let openDialog: ReturnType<typeof vi.fn>;
+
+  function setViewModel(overrides: Partial<SearchViewModel>): void {
+    viewModelSignal.set({
+      results: [],
+      status: 'idle',
+      error: null,
+      activeQuery: null,
+      hasMoreResults: false,
+      isLoadingMore: false,
+      isLoadingMoreError: false,
+      ...overrides,
+    });
+  }
+
+  function resultsOfLength(length: number): SearchResult[] {
+    return Array.from({ length }, (_, i) => ({ ...noResult, id: `${i}` }));
+  }
+
+  function aResult(): SearchResult {
+    return { ...noResult, imageUrl: 'https://x/full.jpg' };
+  }
+
+  beforeEach(() => {
+    viewModelSignal = signal<SearchViewModel>({
+      results: [],
+      status: 'idle',
+      error: null,
+      activeQuery: null,
+      hasMoreResults: false,
+      isLoadingMore: false,
+      isLoadingMoreError: false,
+    });
+    loadNextPage = vi.fn();
+    openDialog = vi.fn().mockResolvedValue(undefined);
+
+    TestBed.configureTestingModule({
+      providers: [
+        provideZonelessChangeDetection(),
+        {
+          provide: SearchFacade,
+          useValue: {
+            viewModel: viewModelSignal,
+            queryChanged: vi.fn(),
+            loadNextPage,
+            retry: vi.fn(),
+          },
+        },
+        { provide: QueryHistoryFacade, useValue: { entries: () => [] } },
+        { provide: ImagePreviewDialogService, useValue: { open: openDialog } },
+      ],
+    });
+
+    fixture = TestBed.createComponent(SearchShell);
+    component = fixture.componentInstance as unknown as typeof component;
+  });
+
+  // CORRECTED from the brief: the brief's literal test grew results from 20 to 40 while
+  // keeping the same {firstVisibleIndex: 14, visibleRowCount: 6} range. With
+  // shouldLoadNextPage's actual formula (lastVisibleIndex = firstVisibleIndex +
+  // visibleRowCount = 20; loadedCount - lastVisibleIndex <= 8 rows to trigger), growing to
+  // 40 results makes the gap 20, which is well outside the 8-row prefetch window — so a
+  // *correct* implementation would legitimately NOT reload, and the brief's test could never
+  // pass. This version grows the batch by a small increment (20 -> 26) that keeps the
+  // still-stationary viewport within the prefetch window, which is what actually
+  // discriminates "re-checked via the effect when a batch lands" from "only checked on
+  // scroll" (the pre-fix code would never re-fire here, since onScrolled is not called again).
+  it('should request the next page, when a batch lands while the viewport is already at the end', async () => {
+    setViewModel({ results: resultsOfLength(20), status: 'success', hasMoreResults: true });
+    fixture.detectChanges();
+    component.onScrolled({ firstVisibleIndex: 14, visibleRowCount: 6 });
+    fixture.detectChanges();
+    await Promise.resolve();
+    loadNextPage.mockClear();
+
+    setViewModel({ results: resultsOfLength(26), status: 'success', hasMoreResults: true });
+    fixture.detectChanges();
+    await Promise.resolve();
+
+    expect(loadNextPage).toHaveBeenCalled();
+  });
+
+  it('should not request a page, when the active query changed after the last scroll', () => {
+    setViewModel({
+      results: resultsOfLength(20),
+      status: 'success',
+      hasMoreResults: true,
+      activeQuery: 'cats',
+    });
+    fixture.detectChanges();
+    component.onScrolled({ firstVisibleIndex: 14, visibleRowCount: 6 });
+    fixture.detectChanges();
+    loadNextPage.mockClear();
+
+    setViewModel({
+      results: resultsOfLength(20),
+      status: 'success',
+      hasMoreResults: true,
+      activeQuery: 'dogs',
+    });
+    fixture.detectChanges();
+
+    expect(loadNextPage).not.toHaveBeenCalled();
+  });
+
+  it('should show an error, when the preview dialog fails to open', async () => {
+    openDialog.mockRejectedValue(new Error('chunk load failed'));
+    fixture.detectChanges();
+
+    component.onResultSelected(aResult());
+    await Promise.resolve();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Could not open the image preview');
   });
 });
