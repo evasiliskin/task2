@@ -1,5 +1,12 @@
 import { NormalizedPoint } from '../normalized-point.model';
-import { addPoints, rotatePointAspectCorrected, scalePoint, subtractPoints } from './point-math';
+import {
+  addPoints,
+  applyAspectRotation,
+  createAspectRotation,
+  rotatePointAspectCorrected,
+  scalePoint,
+  subtractPoints,
+} from './point-math';
 
 describe('addPoints', () => {
   const cases: [NormalizedPoint, NormalizedPoint, NormalizedPoint][] = [
@@ -68,6 +75,25 @@ describe('rotatePointAspectCorrected', () => {
 
     expect(result.x).toBeCloseTo(0, 9);
     expect(result.y).toBeCloseTo(2, 9);
+  });
+});
+
+describe('applyAspectRotation', () => {
+  it('should match rotatePointAspectCorrected, when given the same angle and aspect ratio', () => {
+    const point: NormalizedPoint = { x: 0.25, y: -0.4 };
+    const radians = Math.PI / 5;
+    const aspectRatio = 16 / 9;
+
+    expect(applyAspectRotation(point, createAspectRotation(radians, aspectRatio))).toEqual(
+      rotatePointAspectCorrected(point, radians, aspectRatio),
+    );
+  });
+
+  it('should return the point unchanged, when the angle is zero', () => {
+    expect(applyAspectRotation({ x: 0.3, y: 0.7 }, createAspectRotation(0, 2))).toEqual({
+      x: 0.3,
+      y: 0.7,
+    });
   });
 });
 

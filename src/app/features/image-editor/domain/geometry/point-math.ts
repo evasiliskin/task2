@@ -12,15 +12,37 @@ export function scalePoint(point: NormalizedPoint, scale: number): NormalizedPoi
   return { x: point.x * scale, y: point.y * scale };
 }
 
+export interface AspectRotation {
+  readonly cos: number;
+  readonly sin: number;
+  readonly aspectRatio: number;
+}
+
+/**
+ * Precomputes a rotation so a batch of points can share one `cos`/`sin` pair.
+ *
+ * Normalized coordinates scale x and y independently, so a plain rotation matrix would shear
+ * the polygon on any non-square image. Converting to pixels, rotating, and converting back
+ * yields the aspect-corrected form applied by `applyAspectRotation`.
+ */
+export function createAspectRotation(radians: number, aspectRatio: number): AspectRotation {
+  return { cos: Math.cos(radians), sin: Math.sin(radians), aspectRatio };
+}
+
+export function applyAspectRotation(
+  point: NormalizedPoint,
+  rotation: AspectRotation,
+): NormalizedPoint {
+  return {
+    x: point.x * rotation.cos - (point.y * rotation.sin) / rotation.aspectRatio,
+    y: point.x * rotation.aspectRatio * rotation.sin + point.y * rotation.cos,
+  };
+}
+
 export function rotatePointAspectCorrected(
   point: NormalizedPoint,
   radians: number,
   aspectRatio: number,
 ): NormalizedPoint {
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  return {
-    x: point.x * cos - (point.y * sin) / aspectRatio,
-    y: point.x * aspectRatio * sin + point.y * cos,
-  };
+  return applyAspectRotation(point, createAspectRotation(radians, aspectRatio));
 }

@@ -1,21 +1,17 @@
 import { NormalizedPoint } from '../normalized-point.model';
 import { Polygon } from '../polygon.model';
+import { applyAspectRotation, createAspectRotation, scalePoint } from './point-math';
 
 export function toWorldPoints(
   points: readonly NormalizedPoint[],
   polygon: Polygon,
   aspectRatio: number,
 ): NormalizedPoint[] {
-  const cos = Math.cos(polygon.rotationRadians);
-  const sin = Math.sin(polygon.rotationRadians);
+  const rotation = createAspectRotation(polygon.rotationRadians, aspectRatio);
 
   return points.map((point) => {
-    const x = point.x * polygon.scale;
-    const y = point.y * polygon.scale;
-    return {
-      x: x * cos - (y * sin) / aspectRatio + polygon.position.x,
-      y: x * aspectRatio * sin + y * cos + polygon.position.y,
-    };
+    const rotated = applyAspectRotation(scalePoint(point, polygon.scale), rotation);
+    return { x: rotated.x + polygon.position.x, y: rotated.y + polygon.position.y };
   });
 }
 

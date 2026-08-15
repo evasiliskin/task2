@@ -125,6 +125,28 @@ describe('getWorldPoints with scale', () => {
   });
 });
 
+describe('cross-check with toWorldPoint', () => {
+  it('should agree with toWorldPoint for every vertex, when the polygon is rotated and scaled', () => {
+    const polygon: Polygon = {
+      id: 'p1',
+      imageId: 'i1',
+      points: [
+        { x: -0.1, y: -0.1 },
+        { x: 0.1, y: -0.1 },
+        { x: 0, y: 0.15 },
+      ],
+      position: { x: 0.5, y: 0.5 },
+      rotationRadians: Math.PI / 7,
+      scale: 1.4,
+    };
+    const aspectRatio = 16 / 9;
+
+    expect(getWorldPoints(polygon, aspectRatio)).toEqual(
+      polygon.points.map((point) => toWorldPoint(point, polygon, aspectRatio)),
+    );
+  });
+});
+
 describe('ratio preservation', () => {
   it('should scale pixel geometry proportionally, when the canvas box grows uniformly', () => {
     const polygon = {
