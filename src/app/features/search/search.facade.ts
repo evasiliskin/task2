@@ -3,7 +3,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
-import { isMeaningfulQuery, normalizeSearchQuery } from '@shared/search-query';
+import { isMeaningfulQuery, normalizeSearchQuery, toCanonicalQuery } from '@shared/search-query';
 import { SEARCH_DEBOUNCE_MS } from './domain/search-debounce';
 import { SearchActions, SearchPageActions } from './state/search.actions';
 import { selectSearchViewModel } from './state/search.reducer';
@@ -20,7 +20,9 @@ export class SearchFacade {
       .pipe(
         debounceTime(SEARCH_DEBOUNCE_MS),
         map(normalizeSearchQuery),
-        distinctUntilChanged(),
+        distinctUntilChanged(
+          (previous, current) => toCanonicalQuery(previous) === toCanonicalQuery(current),
+        ),
         takeUntilDestroyed(),
       )
       .subscribe((query) => {

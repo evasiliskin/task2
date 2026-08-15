@@ -48,4 +48,14 @@ describe('SearchFacade', () => {
 
     expect(store.dispatch).not.toHaveBeenCalled();
   });
+
+  it('should dispatch one search, when the query changes only by casing', () => {
+    facade.queryChanged('cats');
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    facade.queryChanged('Cats');
+    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+
+    expect(store.dispatch).toHaveBeenCalledTimes(1);
+    expect(store.dispatch).toHaveBeenCalledWith(SearchActions.searchRequested({ query: 'cats' }));
+  });
 });
