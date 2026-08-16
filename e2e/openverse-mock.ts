@@ -55,13 +55,6 @@ export async function readCanvasDataUrl(page: Page) {
   });
 }
 
-/**
- * The dialog's zoom-in entrance animation and the canvas's own
- * ResizeObserver -> requestAnimationFrame render pipeline both run after the
- * "polygon exists" text becomes visible, so a single read right after that
- * text appears can catch an in-between frame (or the browser's un-sized
- * 300x150 canvas default). Poll until two consecutive reads agree.
- */
 export async function waitForStableCanvasDataUrl(page: Page): Promise<string> {
   let previous = await readCanvasDataUrl(page);
   for (let attempt = 0; attempt < STABLE_VALUE_MAX_ATTEMPTS; attempt++) {

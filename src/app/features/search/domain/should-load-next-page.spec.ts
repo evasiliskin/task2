@@ -19,8 +19,6 @@ describe('shouldLoadNextPage', () => {
   });
 
   it('should trigger on a tall viewport at the bottom, where a first-visible-index rule would not', () => {
-    // 12 visible rows on a 1440p-class viewport. The old rule compared
-    // loadedCount - firstVisibleIndex (= 12) against 8 and never fired.
     expect(
       shouldLoadNextPage({ ...base, firstVisibleIndex: 88, visibleRowCount: 12, loadedCount: 100 }),
     ).toBe(true);

@@ -5,12 +5,6 @@ import {
   waitForStableCanvasDataUrl,
 } from './openverse-mock';
 
-/**
- * Covers the three defects this review pass fixed that jsdom cannot exercise:
- * the near-end pagination trigger, the flex layout at short viewports, and
- * (transitively, by keeping the image mock always resolvable) the image
- * error path staying out of the way of a normal draw/drag flow.
- */
 
 const VIEWPORT_WIDTH_PX = 1280;
 const VIEWPORT_HEIGHTS_PX = {
@@ -60,9 +54,6 @@ for (const [heightLabel, viewportHeight] of Object.entries(VIEWPORT_HEIGHTS_PX))
     ) {
       await viewport.hover();
       await page.mouse.wheel(0, SCROLL_STEP_PX);
-      // CDK's scrolledIndexChange is dispatched on the next animation frame
-      // after a scroll event, so a real batch of results needs a moment to
-      // land before the next wheel tick is evaluated against it.
       await page.waitForTimeout(SCROLL_SETTLE_MS);
     }
     expect(

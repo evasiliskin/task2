@@ -10,11 +10,6 @@
       (load)="onImageLoad()"
       (error)="onImageError()"
     />
-    <!--
-      Canvas with role="application" (not "group") so screen readers hand arrow/bracket/+- keys to onKeyDown
-      instead of consuming them for browse-mode navigation. Safe here: the canvas has an
-      accessible name and no readable descendants, so nothing else loses browse mode.
-    -->
     <canvas
       #canvasEl
       class="polygon-canvas__overlay"

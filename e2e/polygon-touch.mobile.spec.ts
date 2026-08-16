@@ -28,11 +28,6 @@ test('completes a touch drag without raising a page error', async ({ page }) => 
 
   const beforeDrag = await waitForStableCanvasDataUrl(page);
 
-  // Playwright's `locator.dispatchEvent` fires a JS-level synthetic event that the browser
-  // never registers as an "active" pointer, so `canvas.setPointerCapture` (called by the app on
-  // every gesture start) throws `NotFoundError` and the drag never begins. Driving real touch
-  // input through the CDP `Input.dispatchTouchEvent` pipeline (the same mechanism Playwright's
-  // own `tap()` uses) produces a genuinely active pointer, exercising the real touch-drag path.
   const centre = { x: box.width * 0.5, y: box.height * 0.567 };
   const start = { x: box.x + centre.x, y: box.y + centre.y };
   const end = { x: start.x + 40, y: start.y + 20 };

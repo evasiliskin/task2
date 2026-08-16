@@ -487,9 +487,6 @@ describe('PolygonCanvas', () => {
     canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, clientY: 200 }));
     globalThis.dispatchEvent(new PointerEvent('pointerup', { clientX: 400, clientY: 400 }));
 
-    // A click on empty canvas only clears the selection if the stuck gesture from the
-    // pointerup-outside-canvas above was actually released; otherwise onPointerDown's
-    // `if (this.activeGesture) return;` guard swallows every subsequent pointerdown.
     canvas.dispatchEvent(new PointerEvent('pointerdown', { clientX: 1, clientY: 1 }));
 
     expect(selectedSpy).toHaveBeenCalledWith(null);

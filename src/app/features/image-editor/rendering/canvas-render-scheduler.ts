@@ -2,10 +2,6 @@ import { Signal, signal } from '@angular/core';
 import { PolygonCanvasRenderer } from './polygon-canvas-renderer';
 import { RenderFrame } from './render-frame.model';
 
-/**
- * Coalesces render requests into at most one paint per animation frame, keeping only the most
- * recent frame, and owns the device-pixel-ratio backing-store sizing.
- */
 export class CanvasRenderScheduler {
   private readonly contextUnavailableState = signal(false);
   private context: CanvasRenderingContext2D | null = null;

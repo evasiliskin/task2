@@ -392,16 +392,6 @@ describe('SearchShell reactive pagination and dialog failure', () => {
     component = fixture.componentInstance as unknown as typeof component;
   });
 
-  // CORRECTED from the brief: the brief's literal test grew results from 20 to 40 while
-  // keeping the same {firstVisibleIndex: 14, visibleRowCount: 6} range. With
-  // shouldLoadNextPage's actual formula (lastVisibleIndex = firstVisibleIndex +
-  // visibleRowCount = 20; loadedCount - lastVisibleIndex <= 8 rows to trigger), growing to
-  // 40 results makes the gap 20, which is well outside the 8-row prefetch window — so a
-  // *correct* implementation would legitimately NOT reload, and the brief's test could never
-  // pass. This version grows the batch by a small increment (20 -> 26) that keeps the
-  // still-stationary viewport within the prefetch window, which is what actually
-  // discriminates "re-checked via the effect when a batch lands" from "only checked on
-  // scroll" (the pre-fix code would never re-fire here, since onScrolled is not called again).
   it('should request the next page, when a batch lands while the viewport is already at the end', async () => {
     setViewModel({ results: resultsOfLength(20), status: 'success', hasMoreResults: true });
     fixture.detectChanges();

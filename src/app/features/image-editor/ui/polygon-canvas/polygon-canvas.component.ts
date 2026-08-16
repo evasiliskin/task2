@@ -135,8 +135,6 @@ export class PolygonCanvas {
   }
 
   protected onPointerDown(event: PointerEvent): void {
-    // Only the primary button drives drawing and gestures; a context-menu click must not
-    // place a vertex or start a drag that the menu then interrupts.
     if (event.button !== 0) {
       return;
     }
@@ -274,10 +272,6 @@ export class PolygonCanvas {
     this.abortGesture(event?.pointerId ?? null);
   }
 
-  /**
-   * `releasePointerCapture` throws `NotFoundError` when the pointer is no longer active, which
-   * is the normal state after a touch `pointerup`. Only release capture we actually hold.
-   */
   private abortGesture(pointerId: number | null): void {
     this.activeGesture = null;
     this.draftPolygon.set(null);
@@ -323,8 +317,6 @@ export class PolygonCanvas {
   protected onDeletePolygon(polygonId: string): void {
     this.announce('Polygon deleted.');
     this.polygonDeleted.emit(polygonId);
-    // The toolbar button that triggered this may now be removed from the DOM; keep focus on the
-    // canvas, which always exists and is where editing continues.
     this.canvasEl().nativeElement.focus();
   }
 

@@ -46,10 +46,6 @@ describe('SearchResultsList', () => {
   });
 
   it('renders the inline retry block outside the virtual-scroll viewport, so it is not clipped by it', () => {
-    // CdkVirtualScrollViewport projects its content into an absolutely-positioned wrapper
-    // whose scrollable range is sized by itemSize * dataLength — anything projected INTO it
-    // after the last item lands past the scrollable range and is unreachable. This must stay
-    // a sibling of the viewport, not a child of it.
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
     fixture.componentRef.setInput('results', makeResults(5));

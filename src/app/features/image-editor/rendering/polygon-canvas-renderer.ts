@@ -67,11 +67,6 @@ export class PolygonCanvasRenderer {
     }
   }
 
-  /**
-   * Draws the in-progress draw-mode point/line preview. Unlike `render()`, this does NOT clear
-   * the canvas first — callers are expected to have already painted the base frame (e.g. the
-   * committed polygons via `render()`) so the preview layers on top of it instead of wiping it.
-   */
   renderDrawPreview(
     context: CanvasRenderingContext2D,
     points: readonly NormalizedPoint[],

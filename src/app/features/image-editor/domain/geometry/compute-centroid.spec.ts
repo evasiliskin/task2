@@ -28,7 +28,6 @@ describe('computeCentroid', () => {
   });
 
   it('should return the vertex mean rather than the area centroid, when the polygon is irregular', () => {
-    // An L-shaped polygon whose vertex mean and area centroid differ measurably.
     const points = [
       { x: 0, y: 0 },
       { x: 3, y: 0 },

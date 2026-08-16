@@ -1,12 +1,6 @@
 import { Signal, effect, signal } from '@angular/core';
 import { CanvasBoxSize } from '../../domain/geometry/coordinate-mapping.model';
 
-/**
- * Tracks the on-screen box size of an element (via `ResizeObserver`) and the current device
- * pixel ratio (via a `matchMedia` listener), for canvas backing-store sizing. Must be
- * constructed within an injection context (e.g. a component constructor) since it registers
- * effects.
- */
 export class CanvasViewportTracker {
   private readonly boxSizeState = signal<CanvasBoxSize>({ width: 0, height: 0 });
   private readonly pixelRatioState = signal(globalThis.devicePixelRatio || 1);

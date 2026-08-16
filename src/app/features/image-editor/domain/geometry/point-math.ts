@@ -18,13 +18,6 @@ export interface AspectRotation {
   readonly aspectRatio: number;
 }
 
-/**
- * Precomputes a rotation so a batch of points can share one `cos`/`sin` pair.
- *
- * Normalized coordinates scale x and y independently, so a plain rotation matrix would shear
- * the polygon on any non-square image. Converting to pixels, rotating, and converting back
- * yields the aspect-corrected form applied by `applyAspectRotation`.
- */
 export function createAspectRotation(radians: number, aspectRatio: number): AspectRotation {
   return { cos: Math.cos(radians), sin: Math.sin(radians), aspectRatio };
 }

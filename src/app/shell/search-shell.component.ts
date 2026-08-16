@@ -50,24 +50,8 @@ export class SearchShell {
     suggestionsFor(this.queryText(), this.queryHistoryFacade.entries()),
   );
 
-  /**
-   * The active query, isolated behind its own `computed` so that reads of it are
-   * equality-memoized: only an actual query change bumps its version, unaffected by
-   * unrelated `viewModel` churn (e.g. a results batch landing).
-   *
-   * CORRECTION from the brief: the brief's exact code used
-   * `source: () => this.viewModel().activeQuery` inline. An inline function source given to
-   * `linkedSignal` is not memoized the way a `computed()` signal is — it re-triggers the
-   * `computation` (resetting `lastVisibleRange` to `null`) on *every* `viewModel` write, even
-   * when `activeQuery` itself hasn't changed. That silently broke the very feature under
-   * test: a results batch landing while the user is stationary is itself a `viewModel`
-   * write, so the brief's version reset `lastVisibleRange` to `null` right before the effect
-   * could re-evaluate it, and the "batch lands while stationary" test could never pass.
-   * Routing through this dedicated `computed` restores real change-only semantics.
-   */
   private readonly activeQuery = computed(() => this.viewModel().activeQuery);
 
-  /** Cleared whenever the active query changes, so a stale range cannot trigger a load. */
   private readonly lastVisibleRange = linkedSignal<string | null, VisibleRange | null>({
     source: this.activeQuery,
     computation: () => null,
@@ -104,12 +88,6 @@ export class SearchShell {
   protected onSuggestionSelected(query: string): void {
     this.queryText.set(query);
     this.searchFacade.querySubmitted(query);
-    // Re-arm the debounced pipeline with the same value that was just submitted, so a
-    // pending queryInput$ timer from earlier keystrokes (e.g. typing "moun" before picking
-    // the "mountains" suggestion) resolves to an echo of the already-dispatched query
-    // instead of a stale one. distinctUntilChanged then suppresses the redundant dispatch —
-    // see SearchFacade's 'should not dispatch a second search, when the input echoes a
-    // submitted query' test.
     this.searchFacade.queryChanged(query);
   }
 

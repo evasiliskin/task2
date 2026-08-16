@@ -32,12 +32,6 @@
         Clear search
       </button>
     }
-    <!--
-      Options are intentionally not focusable and carry no key handlers: in the ARIA combobox
-      pattern focus stays on the input and navigation is reported via aria-activedescendant,
-      which onKeyDown implements. mousedown is prevented so clicking an option does not blur
-      the input and close the list before the click lands.
-    -->
     <ul
       class="search-input__listbox"
       role="listbox"

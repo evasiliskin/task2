@@ -35,7 +35,6 @@ export class SearchInput {
   private readonly isFocused = signal(false);
   private readonly isDismissed = signal(false);
 
-  /** Resets whenever the suggestion list changes identity, i.e. on every keystroke. */
   protected readonly activeIndex = linkedSignal<readonly string[], number>({
     source: this.suggestions,
     computation: () => NO_ACTIVE_SUGGESTION,
