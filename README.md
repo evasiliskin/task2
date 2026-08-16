@@ -14,6 +14,12 @@ What a user can do:
   pointer or the keyboard. Polygons and query history live in the store for the session, so they
   survive closing and reopening the dialog — but not a page reload.
 
+## Demo
+
+The following video demonstrates the implemented functionality and the main user flows.
+
+[Watch the demo](./docs/demo.mp4)
+
 ## Stack
 
 | Area      | Choice                                                               |
