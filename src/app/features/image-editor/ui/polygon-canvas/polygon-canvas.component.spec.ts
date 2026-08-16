@@ -144,6 +144,12 @@ function dragFrom(
   fixture.detectChanges();
 }
 
+function startDrawing(fixture: ComponentFixture<PolygonCanvas>): void {
+  loadImage(fixture);
+  drawButton(fixture).click();
+  fixture.detectChanges();
+}
+
 describe('PolygonCanvas', () => {
   let liveAnnouncerSpy: { announce: ReturnType<typeof vi.fn> };
 
@@ -274,6 +280,20 @@ describe('PolygonCanvas', () => {
 
     expect(fixture.nativeElement.textContent).not.toContain('point(s) placed');
     expect(drawButton(fixture)).not.toBeNull();
+  });
+
+  it('should ignore the pointer event, when a non-primary button starts it in draw mode', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+    startDrawing(fixture);
+
+    canvasElement(fixture).dispatchEvent(
+      new PointerEvent('pointerdown', { button: 2, clientX: 10, clientY: 10, bubbles: true }),
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Click the image to place the first point.',
+    );
   });
 
   it('should finish the polygon, when clicking near the first placed vertex', () => {
@@ -516,6 +536,28 @@ describe('PolygonCanvas', () => {
     expect(emitted).toEqual(['p1']);
   });
 
+  it('should announce the new selection, when Next is clicked', () => {
+    const first = squarePolygon('p1');
+    const second = squarePolygon('p2');
+    const fixture = renderCanvas({ polygons: [first, second], selectedPolygon: first });
+    loadImage(fixture);
+
+    nextButton(fixture).click();
+
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon 2 of 2 selected.');
+  });
+
+  it('should not duplicate the polygon counter as a live region, when a polygon is selected', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+
+    const liveRegions = [...fixture.nativeElement.querySelectorAll('[aria-live]')].map(
+      (element: Element) => element.textContent?.trim(),
+    );
+
+    expect(liveRegions.some((text) => text?.includes('Polygon 1 of 1'))).toBe(false);
+  });
+
   it('should emit polygonDeleted with the polygon id, when Delete polygon is clicked', () => {
     const polygon = squarePolygon('p1');
     const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
@@ -528,6 +570,18 @@ describe('PolygonCanvas', () => {
 
     expect(deletedSpy).toHaveBeenCalledWith('p1');
     expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Polygon deleted.');
+  });
+
+  it('should move focus to the canvas, when the last polygon is deleted from the toolbar', () => {
+    const polygon = squarePolygon('p1');
+    const fixture = renderCanvas({ polygons: [polygon], selectedPolygon: polygon });
+
+    const deleteBtn: HTMLButtonElement = deleteButton(fixture);
+    deleteBtn.focus();
+    deleteBtn.click();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(canvasElement(fixture));
   });
 
   it('should show the capacity hint, when isAtCapacity is true', () => {
@@ -547,7 +601,7 @@ describe('PolygonCanvas', () => {
     const canvas = canvasElement(fixture);
 
     expect(canvas.getAttribute('tabindex')).toBe('0');
-    expect(canvas.getAttribute('role')).toBe('group');
+    expect(canvas.getAttribute('role')).toBe('application');
     expect(canvas.getAttribute('aria-label')).toContain('Draw polygon');
   });
 
@@ -557,7 +611,7 @@ describe('PolygonCanvas', () => {
     const canvas = canvasElement(fixture);
 
     expect(canvas.getAttribute('tabindex')).toBe('0');
-    expect(canvas.getAttribute('role')).toBe('group');
+    expect(canvas.getAttribute('role')).toBe('application');
     expect(canvas.getAttribute('aria-label')).toContain('Arrow keys');
   });
 

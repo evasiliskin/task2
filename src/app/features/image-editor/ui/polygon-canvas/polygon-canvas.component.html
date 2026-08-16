@@ -10,12 +10,17 @@
       (load)="onImageLoad()"
       (error)="onImageError()"
     />
+    <!--
+      Canvas with role="application" (not "group") so screen readers hand arrow/bracket/+- keys to onKeyDown
+      instead of consuming them for browse-mode navigation. Safe here: the canvas has an
+      accessible name and no readable descendants, so nothing else loses browse mode.
+    -->
     <canvas
       #canvasEl
       class="polygon-canvas__overlay"
       [class.polygon-canvas__overlay--drawing]="mode() === 'drawing'"
       [attr.tabindex]="0"
-      role="group"
+      role="application"
       [attr.aria-label]="canvasAriaLabel()"
       (pointerdown)="onPointerDown($event)"
       (dblclick)="onCanvasDoubleClick()"
@@ -69,12 +74,12 @@
         Draw polygon
       </button>
       @if (isAtCapacity()) {
-        <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
+        <span class="polygon-canvas__draw-hint">
           Polygon limit reached — drawing another removes the oldest one.
         </span>
       }
       @if (polygons().length > 0) {
-        <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
+        <span class="polygon-canvas__draw-hint">
           @if (selectedIndex() >= 0) {
             Polygon {{ selectedIndex() + 1 }} of {{ polygons().length }}
           } @else {

@@ -1,8 +1,8 @@
 <div class="search-input">
-  <label for="search-input-field" class="search-input__label">Search images</label>
+  <label [attr.for]="inputId" class="search-input__label">Search images</label>
   <div class="search-input__field">
     <input
-      id="search-input-field"
+      [id]="inputId"
       nz-input
       type="search"
       name="searchQuery"

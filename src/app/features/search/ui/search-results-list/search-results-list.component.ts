@@ -6,6 +6,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { SEARCH_RESULT_ROW_HEIGHT_PX } from '../../domain/should-load-next-page';
 import { SearchResult } from '../../domain/search-result.model';
 import { SearchResultItem } from '../search-result-item/search-result-item.component';
+import { VirtualListSemantics } from './virtual-list-semantics.directive';
 
 export interface VisibleRange {
   readonly firstVisibleIndex: number;
@@ -14,7 +15,14 @@ export interface VisibleRange {
 
 @Component({
   selector: 'app-search-results-list',
-  imports: [ScrollingModule, NzButtonModule, NzSpinModule, NzAlertModule, SearchResultItem],
+  imports: [
+    ScrollingModule,
+    NzButtonModule,
+    NzSpinModule,
+    NzAlertModule,
+    SearchResultItem,
+    VirtualListSemantics,
+  ],
   templateUrl: './search-results-list.component.html',
   styleUrl: './search-results-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

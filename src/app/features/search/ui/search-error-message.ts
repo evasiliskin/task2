@@ -6,6 +6,7 @@ const MESSAGES: Readonly<Record<SearchErrorKind, string>> = {
   server: 'The request could not be completed. Please try again.',
   client: 'The request could not be completed. Please try again.',
   invalidResponse: 'The image service returned unexpected data. Please try again.',
+  timeout: 'The image service took too long to respond. Please try again.',
   unknown: 'Something went wrong. Please try again.',
 };
 

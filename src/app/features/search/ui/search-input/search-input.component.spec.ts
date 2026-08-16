@@ -148,4 +148,24 @@ describe('SearchInput', () => {
 
     expect(input.getAttribute('aria-expanded')).toBe('false');
   });
+
+  it('should give each instance a unique input id bound to its own label, when two are rendered', () => {
+    const first = TestBed.createComponent(SearchInput);
+    first.componentRef.setInput('query', '');
+    first.componentRef.setInput('suggestions', []);
+    first.detectChanges();
+
+    const second = TestBed.createComponent(SearchInput);
+    second.componentRef.setInput('query', '');
+    second.componentRef.setInput('suggestions', []);
+    second.detectChanges();
+
+    const idOf = (fixture: typeof first) => fixture.nativeElement.querySelector('input').id;
+    const labelTargetOf = (fixture: typeof first) =>
+      fixture.nativeElement.querySelector('label').getAttribute('for');
+
+    expect(idOf(first)).not.toBe(idOf(second));
+    expect(labelTargetOf(first)).toBe(idOf(first));
+    expect(labelTargetOf(second)).toBe(idOf(second));
+  });
 });

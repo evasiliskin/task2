@@ -26,10 +26,12 @@ export class SearchEffects {
     ofType(SearchActions.searchRequested, SearchActions.queryCleared),
   );
 
+  private readonly queryCleared$ = this.actions$.pipe(ofType(SearchActions.queryCleared));
+
   performSearch$ = createEffect(() =>
     this.actions$.pipe(
       ofType(SearchActions.searchRequested),
-      switchMap(({ query }) => this.loadPage(query, 1)),
+      switchMap(({ query }) => this.loadPage(query, 1).pipe(takeUntil(this.queryCleared$))),
     ),
   );
 

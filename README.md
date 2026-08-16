@@ -1,418 +1,310 @@
-# Frontend Screening Assignment
+# Image Search & Polygon Annotator
 
-An Angular typeahead image search application backed by [Openverse](https://openverse.org),
-with an NgRx-backed search history, and a Canvas-based polygon editor for
-annotating the selected image.
+An Angular single-page app for searching openly-licensed images on
+[Openverse](https://openverse.org) and annotating any result with polygons drawn on a
+canvas overlay.
 
-## Technology stack
+What a user can do:
 
-- Angular 22 — standalone components, no NgModules
-- TypeScript, strict mode
-- RxJS
-- NgRx Store, Effects, Entity, Store DevTools (22 RC — see [AGENTS.md](AGENTS.md))
-- Angular CDK (virtual scrolling)
-- NG-ZORRO (Ant Design for Angular)
-- Vitest (via `@angular/build:unit-test`)
-- Angular ESLint (flat config)
-- Prettier
+- Type in the search field — results load without a search button and keep loading as the
+  list is scrolled.
+- Re-run an earlier search: the field suggests past queries that actually returned results.
+- Open any result in a dialog showing the full-size image.
+- Draw one or more polygons over that image and drag, rotate, scale or delete them with the
+  pointer or the keyboard. Polygons and search history live in the store for the session,
+  so they survive closing and reopening the dialog (but not a page reload).
 
-## Dependency decisions
+## Stack
 
-NgRx is pinned to `22.0.0-rc.0`. As of 2026-08-14 `@ngrx/store`'s `latest` tag
-is `21.1.1` and `22.0.0-rc.0` is `next`, so a stable NgRx 22 does not exist
-yet; re-pin once it ships. `@angular/cdk` is forced to a single version
-through a pnpm override because `ng-zorro-antd@22.0.1` depends on `22.1.1`
-while this project requires `^22.1.2` — without the override two copies of
-the CDK are installed and both reach the bundle.
+| Area      | Choice                                                             |
+| --------- | ------------------------------------------------------------------ |
+| Framework | Angular 22, standalone APIs only (no NgModules of our own)         |
+| Language  | TypeScript 6, `strict` + `noPropertyAccessFromIndexSignature` etc. |
+| State     | NgRx Store / Effects / Entity / Store DevTools `22.0.0-rc.0`       |
+| Async     | RxJS 7                                                             |
+| UI kit    | NG-ZORRO (Ant Design) 22, Angular CDK 22 (virtual scroll, a11y)    |
+| Rendering | Native `<canvas>` 2D context, no drawing library                   |
+| Tests     | Vitest (via `@angular/build:unit-test`), Playwright for e2e        |
+| Tooling   | pnpm, Angular ESLint (flat config), Prettier, Husky                |
 
-`lodash` was removed from the project entirely — it is not a dependency and
-there is nothing CommonJS in the app, so `angular.json` has no
-`allowedCommonJsDependencies` entry. The search-results cache key used to be
-prefixed with `lodash.kebabCase`; that prefix has since been dropped as
-redundant. See Performance & bundle below for how the key is actually built.
+NgRx is pinned to `22.0.0-rc.0` because no stable NgRx 22 exists yet; re-pin once it ships.
+`@angular/cdk` is forced to `22.1.2` through a pnpm override (`pnpm-workspace.yaml`) —
+`ng-zorro-antd@22.0.1` asks for `22.1.1`, and without the override two CDK copies reach the
+bundle.
 
-## Public API
+**API:** the anonymous [Openverse image API](https://api.openverse.org/v1/images/) — no key,
+CORS-enabled, real `page`/`page_size` pagination with `result_count`/`page_count` in the
+response.
 
-Search is powered by the [Openverse API](https://api.openverse.org/v1/images/) —
-free, openly-licensed image search with no API key required for anonymous
-access, CORS-enabled, and real `page`/`page_size` pagination
-(`result_count`/`page_count` in the response). Alternatives considered:
-Unsplash (signup-gated API key, 50 req/hour demo limit) and the iTunes Search
-API (no key, but a media domain rather than images, and only limit/offset
-pagination).
+## Prerequisites
 
-## Architecture
+- Node — `.nvmrc` pins `26.5.0`; `package.json` `engines` accepts `^22.22.3 || ^24.15.0 || >=26.0.0`.
+- pnpm `11.21.0` (declared as `packageManager`; the Angular CLI is configured for pnpm).
 
-Feature-oriented structure under `src/app`:
-
-```
-src/app/
-  core/
-    api/openverse/          Openverse base URL + page-size config (InjectionToken)
-    http/                   HTTP error-normalizing interceptor
-  features/
-    search/
-      domain/                SearchResult model, normalizeSearchQuery(), isMeaningfulQuery()
-      data-access/            OpenverseApi, mapOpenverseSearchResponse (DTO -> domain), SearchResultsCache
-      state/                  actions, entity-adapted reducer, effects, selectors
-      ui/                     search-input, search-results-list (CDK virtual scroll),
-                               search-result-item, search-empty-state, search-error-state
-      search.facade.ts        the only surface UI components talk to
-    query-history/
-      domain/                 QueryHistoryEntry model, suggestionsFor() word-matching rule
-      state/                  actions, entity-adapted reducer + selectors (no effects here —
-                               the recording effect lives in shell/, see below)
-      query-history.facade.ts
-    image-editor/
-      domain/geometry/        pure, Angular/Canvas-free: points, rotation, scale, centroid,
-                               bounding box, hit-test, coordinate mapping
-      state/                  polygon actions/reducer/selectors, entity keyed by polygon.id
-                               (imageId is a grouping key, not the identity)
-      rendering/               PolygonCanvasRenderer — draws the polygon overlay only
-      interaction/             PolygonInteractionController — pointer/keyboard -> geometry translation
-      ui/                      image-preview-dialog, polygon-canvas
-      image-editor.facade.ts
-  shell/
-    search-shell.component.ts               SearchShell — the search page component; opens the
-                                             image preview dialog when a result is selected
-    query-history-recording.effects.ts      the query-history recording effect (see below)
-  app.component.ts / app.config.ts / app.routes.ts
-```
-
-`core/` and `shared/` subfolders are created only when a real file needs to
-live there. Each feature under `features/` owns its own domain, data-access,
-state, and UI.
-
-See [AGENTS.md](AGENTS.md) for the full architectural contract. Topic-specific
-rules (Angular, NgRx, RxJS, testing, performance, canvas, accessibility, code
-review) live under `.ai/skills/`, a gitignored local directory not part of
-this repository.
-
-### Cross-feature contracts
-
-- `query-history` reacts to `search`'s `[Search API] Load Results Success`
-  action via `src/app/shell/query-history-recording.effects.ts` (only records
-  a query when it's page 1 and `resultCount > 0`) — a one-directional
-  dependency on an action _shape_, not a facade import. The recording effect
-  lives in `shell/` rather than in either feature, which is what makes the
-  dependency one-directional.
-- `SearchShell` (in `src/app/shell/`) calls `ImagePreviewDialogService.open(target)` to launch the
-  dialog after a result is selected — dialog presentation lives in that
-  service, not in `image-editor.facade.ts`. The dialog receives only a plain
-  `ImagePreviewTarget` input (`{ imageId, imageUrl, title, width, height }`)
-  — it has no knowledge of Openverse, HTTP, or NgRx search state.
-
-## Search & pagination
-
-- Every keystroke updates a local signal (typing never waits on the store) and is
-  pushed into `SearchFacade`. The facade holds one app-lifetime RxJS pipeline —
-  `debounceTime(300) → map(normalizeSearchQuery) → distinctUntilChanged` — which
-  dispatches either `searchRequested` or `queryCleared` depending on
-  `isMeaningfulQuery`. Keystrokes therefore never reach the store, and DevTools
-  shows one action per settled query rather than one per character. The HTTP call
-  lives in `performSearch$`, which reacts to `searchRequested` via `switchMap`.
-- The CDK virtual-scroll list's near-end trigger dispatches
-  `[Search Page] Next Page Requested`. Its effect uses `exhaustMap`
-  (not `switchMap`/`concatMap`), guarded by a `withLatestFrom` check against
-  the current `page`/`status`, so a second trigger while a page is already
-  in flight is dropped.
-- Results are `@ngrx/entity`-adapted (`upsertMany`, keyed by Openverse's
-  stable `id`), which also makes duplicate IDs across pages self-healing.
-- `SearchResultsCache` is an in-memory LRU cache (`Map<"query|page", MappedSearchPage>`,
-  capped at 30 entries, 5-minute TTL) consulted inside `SearchRepository`, which
-  the effect calls, before hitting the network — session-scoped, no
-  `localStorage`/IndexedDB layer; see Limitations below.
-- Empty/meaningless queries dispatch a `queryCleared` action that resets
-  results and status to `idle` without calling the API or recording history.
-- The HTTP error interceptor retries `429`/`5xx`/network-error responses
-  (up to 2 attempts, exponential backoff) before giving up. A request that
-  still fails dispatches a normalized, user-safe error message; `status`
-  becomes `'error'` and renders via a dedicated error-state component with a
-  retry action. Failed requests are not cached.
-
-## Query history & suggestions
-
-Only _meaningful_ queries that actually returned results are recorded
-(page 1, `resultCount > 0`), keyed by normalized query text via
-`@ngrx/entity`'s `upsertOne` — re-recording an existing canonical query
-updates that entry instead of duplicating it. `suggestionsFor()` breaks both the
-typed input and each history entry into words and matches when every typed
-word is a prefix of some word in the historical entry — so "mountain lake"
-suggests a past "lake mountain view" query, not just exact substring matches.
-Suggestions are shown via a first-party ARIA-correct combobox on the search
-input: the input carries `role="combobox"` and `aria-expanded`/
-`aria-controls`/`aria-activedescendant` wired to real state, and the
-suggestion list is a `role="listbox"` of `role="option"` elements — see
-Performance & bundle below for why this replaced `nz-autocomplete`.
-
-## Polygon editor
-
-### Domain model
-
-Following the assignment's own example shape
-(`{ id, points, rotation, position, imageId }`), each `Polygon` is stored as
-**local-space points + a world-space transform**. An image can now hold
-_multiple_ polygons: `id` is the polygon's own identity (an opaque token from
-`polygon-id.token.ts`, no longer `=== imageId`), and `imageId` is only the
-grouping key used to look up "the polygons for this image". The NgRx entity
-adapter is keyed by `polygon.id`; `selectedPolygonId: string | null` in
-`ImageEditorState` tracks which one is currently active.
-
-```ts
-interface NormalizedPoint {
-  readonly x: number; // 0..1 of the original image's width
-  readonly y: number; // 0..1 of the original image's height
-}
-
-interface Polygon {
-  readonly id: string; // real identity, unique per polygon
-  readonly imageId: string; // grouping key — which image this polygon belongs to
-  readonly points: readonly NormalizedPoint[]; // vertices in LOCAL space, centroid at (0,0)
-  readonly position: NormalizedPoint; // world-space centroid
-  readonly rotationRadians: number; // rotation around that same centroid
-  readonly scale: number; // uniform scale factor, default 1
-}
-```
-
-Rotating around the center is a single field update (`rotationRadians` — the
-center _is_ `position`, so there's no separate centroid recomputation).
-Dragging is a single field update to `position`. Scaling is a single field
-update to `scale`, clamped to `[MIN_POLYGON_SCALE, MAX_POLYGON_SCALE]` = `[0.1,
-5]` (`domain/geometry/clamp-polygon-scale.ts`). Repeated edits don't
-accumulate floating-point drift the way mutating absolute vertex coordinates
-repeatedly would. One function composes the renderable/hit-testable shape:
-
-`getWorldPoints(polygon, aspectRatio) = polygon.points.map(p =>
-addPoints(rotatePointAspectCorrected(p × polygon.scale, polygon.rotationRadians, aspectRatio), polygon.position))`
-
-— i.e. `world(p) = rotateAspectCorrected(p × scale, θ, AR) + position`: scale
-first (around the local-space origin), then the aspect-corrected rotation,
-then translate by `position`.
-
-The aspect correction is what keeps rotation rigid. Substituting `px = x·W`,
-`py = y·H` and `aspectRatio = W/H` into `rotatePointAspectCorrected` reduces it
-to `px' = px·cos − py·sin`, `py' = px·sin + py·cos` — an exact rotation in pixel
-space. Without it, rotating a shape stored in normalized coordinates would shear
-it on any non-square image.
-
-### Coordinate systems
-
-Two coordinate systems stay explicit and are never mixed silently:
-
-- **Normalized image space** (0..1) — what's stored in NgRx, resolution-independent.
-- **Canvas pixel space** — normalized × the currently rendered `<img>` box
-  size. Conversion happens only in `domain/geometry/to-pixel-point.ts` and
-  `to-normalized-point.ts`, and their call sites in `rendering/`/`interaction/`.
-
-The canvas is a transparent overlay absolutely positioned over the `<img>`,
-resized via `ResizeObserver` (not `window.resize`, which misses
-container-driven resizes like a dialog reflow) — so the polygon keeps its
-proportions relative to the image at any viewport size. The image renders as
-a native `<img>`; the canvas only draws the polygon and its rotate handle.
-
-### Interaction
-
-- **Drawing** — an explicit "Draw polygon" button (disabled until the image
-  finishes loading) enters draw mode; there's no implicit "empty canvas"
-  trigger, since an image can already have other polygons on it. In draw
-  mode, clicks append vertices (live preview polyline), committed (minimum 3
-  points) via double-click, clicking near the first vertex, or the "Finish
-  polygon" button.
-- **Multiple polygons per image** — Previous/Next buttons cycle
-  `selectedPolygonId` through the polygons for the current image, and a
-  Delete-polygon button removes the selected one. In idle mode, pointer
-  hit-testing checks scale handles first, then the rotation handle, then the
-  topmost polygon body — so handles on a small selected polygon still win
-  over a larger polygon underneath it.
-- **Drag / rotate / scale** — pointer-drag on the polygon body moves it;
-  pointer-drag on its rotate handle rotates it around the center;
-  pointer-drag on a corner scale handle changes its `scale`. The in-progress
-  shape lives in a local component signal during an active gesture — it is
-  _not_ dispatched to the store on every `pointermove`; only `pointerup`
-  commits the final `Polygon` via the facade. Rotation and scale handle
-  positions are computed in **pixel space** (`get-handle-points.ts`) and
-  clamped inside the canvas box — computing them in normalized space could
-  place the rotation handle off-canvas for a polygon near the top edge.
-- **Keyboard** — once a polygon is selected, the canvas is focusable and
-  keyboard-operable: arrow keys nudge `position` by a fixed normalized step,
-  `+`/`-` scale it, `[`/`]` rotate by 15°, `Delete` removes it, `Escape`
-  deselects. A visually-hidden `aria-live="polite"` region announces the
-  result of each action (e.g. "Polygon rotated 15° clockwise."). Free-hand
-  vertex placement itself has no keyboard equivalent (see Limitations).
-- **Restore on reopen** — reopening the dialog for an image with saved
-  polygons renders them immediately from the store; no redraw is needed.
-  `selectedPolygonId` lives in root NgRx state rather than the dialog
-  component, so selection survives closing and reopening the _same_ image's
-  dialog. It's a single global field rather than per-image, though: opening
-  a different image's dialog in between will clear it, so the previous
-  selection is only restored if no other image's dialog was visited first.
-- **Focus** — opening the dialog captures `document.activeElement`; closing
-  it (via NG-ZORRO's modal, which traps focus while open) restores focus to
-  that element.
-
-**Rotation pivot — vertex mean, not area centroid.** `computeCentroid` returns the arithmetic
-mean of the vertices. Both it and the area centroid are legitimate "centers" for the assignment's
-"rotate the polygon around its center", and the vertex mean is preferred here because it is
-O(n) with no signed-area special cases and stays well-defined for the self-intersecting polygons
-that free-hand drawing can produce — the area centroid divides by a signed area that is zero for
-degenerate shapes a user can genuinely draw. `compute-centroid.spec.ts` asserts this definition
-explicitly so a future change is deliberate.
-
-## Persistence
-
-Session-only, in-memory NgRx state — no `localStorage`/IndexedDB sync layer.
-Search history and drawn polygons persist across dialog opens/closes and
-navigation within a session, but reset on a full page reload.
-
-## Development process
-
-This project was built with AI-assisted development under written, reviewed plans. The plans
-live in `docs/superpowers/plans/` and the reusable engineering guidance in `.ai/skills/`; both
-are gitignored, so a clone contains only the application. Every architectural decision recorded
-in this README — the coordinate model, the cancellation strategy, the pagination guards, the
-ARIA combobox rewrite — was reviewed and is defended on its merits, not adopted by default.
-
-## Known limitations / trade-offs
-
-- No `localStorage` persistence — history and polygons reset on page reload
-  (explicit scope decision).
-- Free-hand polygon drawing has no full keyboard-only equivalent; editing an
-  already-drawn polygon (move/rotate/delete) does.
-- Openverse's anonymous rate limit is not published as a hard number; the
-  HTTP error interceptor retries `429`/`5xx` responses with exponential
-  backoff before normalizing a still-failing request into the existing
-  error-state UI.
-- Query history is capped at 50 entries; recording a 51st evicts the
-  least-recently-used entry.
-
-## SEO & accessibility
-
-Single-route client app. Decisions and reasoning:
-
-- **Metadata is static**, in `src/index.html` (title, description, robots,
-  canonical, Open Graph, Twitter card, one `WebApplication` JSON-LD block) —
-  no `Meta`/`Title` service was introduced, since nothing here varies
-  per-view. That would become justified if the app grew real per-route
-  content.
-- `https://image-search.example.com/` in `index.html` is a
-  placeholder (RFC 2606 `.example` domain) for canonical/OG/sitemap URLs —
-  replace it with the real deployed origin before shipping.
-- **Prerendered** (`ng add @angular/ssr`, `RenderMode.Prerender` for `/`,
-  `outputMode: "static"`) so crawlers see real HTML instead of an empty
-  `<app-root>`. Deploys as plain static files — no Node server required.
-  This only prerenders the idle shell; search results are per-user,
-  client-only NgRx state and were never going to be indexable regardless of
-  rendering strategy.
-- `public/robots.txt` / `public/sitemap.xml` cover the app's one real URL.
-- Two targeted accessibility gaps were closed: an accessible name for the
-  polygon canvas while drawing (previously only present once a polygon
-  existed), and `aria-modal`/`aria-labelledby` wiring on the image preview
-  dialog. Everything else audited (alt text, focus trap, keyboard support,
-  live regions, labeled input) was already correct and was left untouched.
-
-## Performance & bundle
-
-`ng-zorro-antd/modal/style/index.min.css` stays in the eager `angular.json`
-`styles` array even though `ImagePreviewDialog` is dynamically imported. Ant
-Design's modal styles are global and cannot be scoped to a component without
-`ViewEncapsulation.None`, which would push the stylesheet past the 8 kB
-`anyComponentStyle` production budget. Raising that budget to hide the
-problem is not an option, so the eager load is a deliberate trade-off:
-roughly one stylesheet's worth of initial CSS in exchange for a correct,
-budget-clean build.
-
-The initial-bundle budget is `900kB` (raw), not the framework default of
-`500kB`. The measured floor after deduplicating `@angular/cdk`, removing
-`lodash`, and replacing `nz-autocomplete` with a first-party suggestions
-combobox is `797.39kB` raw (down from `868.01kB` before that combobox
-rewrite) — mostly eagerly-loaded NG-ZORRO modules and Angular CDK.
-Two honest trims were tried and both failed: removing the eager
-`NzModalModule` provider import breaks `NzModalService` injection
-(`NG0201`), and pruning the eager modal stylesheet only saves ~5kB while
-leaving the dialog unstyled (see the paragraph above). Raising the budget to
-hide a real problem is not acceptable, but a budget that never reflects an
-honestly-reduced floor is equally useless as a signal — `900kB` gives
-headroom over the measured `797.39kB` so the warning fires only on a genuine
-regression, not on the current baseline.
-
-Replacing `nz-autocomplete` with a first-party suggestions combobox (required for a valid
-ARIA 1.2 combobox — `nz-auto-option` hard-codes `role="menuitem"`, which a combobox may not own)
-also removed `ng-zorro-antd/auto-complete/style/index.min.css` from the eager `styles` array.
-
-The search-results cache key is built as
-`` `${encodeURIComponent(toCanonicalQuery(query))}::${page}` ``
-(`data-access/search-results-cache.service.ts`), where `toCanonicalQuery`
-(trim + collapse whitespace + lowercase) means `Cats` and `cats` share one
-cache entry, but the key isn't collapsed further than that: wrapping the
-canonical query in `encodeURIComponent` rather than reducing it further
-keeps punctuation-distinct queries (e.g. `cat dog` vs `cat-dog`) in separate
-entries.
-
-## Testing strategy
-
-66 test files / 434 tests, all passing (`pnpm run test:ci`). Prioritized per
-the local (gitignored) `.ai/skills/testing/SKILL.md`:
-
-1. Geometry pure functions — table-driven tests for rotation, translation,
-   centroid, bounding box, coordinate normalization, hit-testing. No
-   Angular/DOM/Canvas required.
-2. Reducers — state transitions (search, query-history, image-editor).
-3. Selectors — derived state (e.g. `hasMore`, filtered suggestions).
-4. Effects — input action + mocked dependency (HTTP, cache) → resulting
-   action, including debounce/cancellation/pagination-guard behavior via
-   Vitest fake timers.
-5. Domain rules — `normalizeSearchQuery`, `isMeaningfulQuery`, `suggestionsFor`.
-6. Critical component interactions — e.g. virtual-scroll near-end trigger
-   dispatches next-page, dialog restores a saved polygon, keyboard editing.
-
-There's also a Playwright end-to-end suite across six spec files, sharing
-mock setup from `e2e/openverse-mock.ts`: `search-pagination-polygon.spec.ts`
-(search → pagination → dialog → polygon draw/drag → reopen/restoration, at
-three viewport heights), `polygon-multi-and-scale.spec.ts` (drawing two
-polygons on one image, scaling one via keyboard, and restoring both on
-reopen), `polygon-resize-ratio.spec.ts` (a rotated, scaled polygon's ink
-bounds stay proportional to the canvas box across a viewport resize),
-`search-suggestions.spec.ts` (a past query is suggested and re-run on
-selection), `polygon-touch.mobile.spec.ts` (a touch drag on the polygon
-canvas completes without raising a page error), and
-`search-layout.mobile.spec.ts` (search results stay usable and free of
-horizontal overflow on a phone viewport) — 8 tests total (the two `.mobile`
-specs run under a `mobile-chrome` project, the rest under `chromium`), all
-passing. Run it with `pnpm run e2e` (requires
-`npx playwright install chromium` once, beforehand). It is
-deliberately **not** part of `pnpm run check` or the pre-push hook, since it
-needs a running dev server and an installed browser rather than just Node.
-
-## Development
-
-Node version is pinned in [.nvmrc](.nvmrc). Angular CLI 22 requires Node
-`^22.22.3`, `^24.15.0`, or `>=26.0.0` — if your active Node version is older,
-switch with `nvm use` before running the commands below.
+## Install and run
 
 ```bash
 pnpm install
+```
+
+```bash
 pnpm start
 ```
 
-The app serves at `http://localhost:4200`.
-
-## Quality checks
+Serves at `http://localhost:4200`.
 
 ```bash
-pnpm run lint          # Angular ESLint
-pnpm run format:check  # Prettier check
-pnpm run test:ci       # Vitest, single run
-pnpm run build         # production build
+pnpm run build
 ```
 
-Run everything at once:
+Production build with prerendering — output is plain static files in
+`dist/frontend-screening/`, no Node server needed.
+
+## Configuration
+
+There are no `.env` files and no `environments/` directory; nothing about the app is
+build-time configurable. The one piece of runtime configuration is the Openverse base URL,
+supplied by the `OPENVERSE_API_CONFIG` injection token
+(`src/app/core/api/openverse/openverse-api.config.ts`) with a default of
+`https://api.openverse.org/v1`; override it by providing the token. `SEARCH_RESULTS_PAGE_SIZE`
+(20) lives next to it.
+
+`https://image-search.example.com/` in `src/index.html`, `public/robots.txt` and
+`public/sitemap.xml` is a placeholder origin — replace it with the real one before deploying.
+
+## Testing
+
+```bash
+pnpm run test:ci     # Vitest, single run (66 files, 434 tests)
+pnpm test            # Vitest, watch mode
+pnpm run e2e         # Playwright, 8 tests across 6 specs
+```
+
+Unit tests are colocated as `*.spec.ts` next to the code they cover and run in jsdom. Weight
+sits on pure geometry/query functions, reducers, selectors, effects (fake timers for
+debounce/cancellation/pagination) and a handful of component interactions. `feature-boundaries.spec.ts`
+is a structural test, not a behavioural one: it fails the suite if a feature imports another
+feature.
+
+Playwright drives a real dev server against a mocked Openverse endpoint
+(`e2e/openverse-mock.ts`) and covers search → pagination → dialog → polygon draw/drag →
+reopen, multi-polygon drawing and scaling, proportional resize of a rotated polygon,
+suggestion re-run, plus two `*.mobile.spec.ts` specs on a phone viewport. It needs a browser
+(`npx playwright install chromium`, once) and a dev server, so it is deliberately **not** part
+of `pnpm run check`.
+
+## Quality gate
 
 ```bash
 pnpm run check
 ```
 
-Other scripts: `pnpm run format` (write formatting fixes), `pnpm test` (watch
-mode locally).
+Runs `lint` → `format:check` → `test:ci` → `build`, and is what the Husky `pre-push` hook
+executes. Individual scripts: `pnpm run lint`, `pnpm run format`, `pnpm run format:check`.
+Every script is wrapped in `cross-env` so it behaves the same on Windows and POSIX shells.
 
-`pnpm run check` also runs automatically on `git push` via a Husky pre-push
-hook.
+## Architecture
+
+Feature-oriented, standalone-component app with a single route (`''` → `SearchShell`).
+
+```
+src/app/
+  core/          app-wide infrastructure with no feature knowledge
+    api/openverse/   Openverse base URL + page size (injection token)
+    http/            error-normalizing interceptor + HttpFailure model
+    time/            CLOCK token (injectable Date.now, keeps tests deterministic)
+  shared/
+    search-query/    query normalization / canonicalization / meaningfulness rules
+  features/
+    search/          typeahead search, pagination, results UI
+    query-history/   recorded queries + suggestion matching
+    image-editor/    polygon domain, canvas rendering, interaction, preview dialog
+  shell/           composition layer: SearchShell page + cross-feature effect
+```
+
+Each feature is internally layered the same way — `domain/` (pure, framework-free rules and
+models), `data-access/` (HTTP, mapping, cache — search only), `state/` (actions, reducer built
+with `createFeature`, effects), `ui/` (presentational components), and one facade at the root
+which is the only thing components outside the feature touch. Every feature exposes a barrel
+(`index.ts`) reached through a path alias: `@search`, `@query-history`, `@image-editor`, plus
+`@core/*` and `@shared/*`.
+
+**Features never import each other.** This is enforced twice: an ESLint
+`no-restricted-imports` rule in `eslint.config.mjs` and `src/app/features/feature-boundaries.spec.ts`.
+Anything that needs two features is composed in `shell/`:
+
+- `QueryHistoryRecordingEffects` listens for search's `[Search API] Load Results Success` and
+  dispatches `[Query History] Query Recorded`. The dependency is on an action shape, one way,
+  and lives outside both features.
+- `SearchShell` calls `ImagePreviewDialogService.open()` with a plain `ImagePreviewTarget`
+  (`{ imageId, imageUrl, title, width, height }`). The dialog knows nothing about Openverse,
+  HTTP or search state.
+
+## State management
+
+Three root feature slices, all registered eagerly in `app.config.ts` and all in memory only.
+
+| Slice          | Entity adapter keyed by | Also holds                                            |
+| -------------- | ----------------------- | ----------------------------------------------------- |
+| `search`       | Openverse result `id`   | `activeQuery`, `status`, `error`, `page`, `pageCount` |
+| `queryHistory` | `canonicalQuery`        | —                                                     |
+| `imageEditor`  | `polygon.id`            | `selectedPolygonId`                                   |
+
+- Server data lives in the store; transient UI state does not. Draw mode, the in-progress
+  vertex list, the in-flight gesture and the last visible scroll range are component signals.
+- `status` is a single union (`idle | loading | loadingMore | success | error | loadingMoreError`)
+  rather than a set of booleans, so impossible combinations cannot be represented.
+- Components read one memoized view-model selector (`selectSearchViewModel`) instead of
+  subscribing to several selectors, and read it as a signal through the facade.
+- Late responses are dropped in the reducer: `loadResultsSuccess`/`Failure` are ignored when
+  their `query` no longer matches `activeQuery`.
+- Query history is capped at 50 entries (least-recently-used evicted); polygons are capped at
+  200 (oldest `createdAt` evicted, and the UI warns before it happens).
+
+## Search flow
+
+```
+keystroke → SearchInput (signal) → SearchShell → SearchFacade
+  → debounce 300ms ─┐
+                    ├→ normalize → distinctUntilChanged(canonical) → isMeaningfulQuery?
+  suggestion pick ──┘        ├─ yes → searchRequested → effect → SearchRepository → cache | HTTP
+                             └─ no  → queryCleared (resets results, no request)
+  → entity upsert → selectSearchViewModel → virtual-scrolled list
+```
+
+- **Keystrokes never reach the store.** The debounced pipeline lives in `SearchFacade` for the
+  app's lifetime; DevTools shows one action per settled query.
+- **Picking a suggestion bypasses the debounce** (a separate `querySubmitted$` subject merged
+  into the same pipeline), so a chosen query dispatches immediately.
+- **Normalization** trims and collapses whitespace; **canonicalization** additionally lowercases
+  and is what `distinctUntilChanged`, the cache key and history identity use — so `Cats` and
+  `cats` are one query. A query is _meaningful_ at ≥ 2 characters, or 1 character if it is
+  non-ASCII (a single CJK character is a real query).
+- **Cancellation:** `performSearch$` uses `switchMap`, so a newer query aborts the in-flight
+  request.
+- **Pagination** is separate: the CDK virtual-scroll viewport reports its visible range,
+  `shouldLoadNextPage()` decides (8 rows of look-ahead) and the effect uses `exhaustMap`
+  guarded by a `withLatestFrom` check on `status`/`page`, so a second trigger during an in-flight
+  page is dropped rather than queued. It is cancelled if the query changes mid-flight.
+  Page 1 replaces the collection (`setAll`); later pages `upsertMany`, which makes duplicate
+  IDs across pages self-healing.
+- **Caching:** `SearchResultsCache` is an in-memory LRU keyed by
+  `` `${encodeURIComponent(canonicalQuery)}::${page}` ``, 30 entries, 5-minute TTL, consulted
+  by `SearchRepository` before the network. Session-scoped; failures are never cached.
+- **Errors:** the HTTP interceptor retries idempotent (`GET`/`HEAD`) requests on `0`/`429`/`5xx`
+  twice with exponential backoff, then wraps the failure in a typed `HttpFailure`. The effect
+  maps it to a `SearchErrorKind`, and the UI turns that into a message plus a retry action;
+  retry resumes either the failed page or the failed query, whichever failed.
+- **History** is recorded by the shell effect only when page 1 came back with at least one
+  _renderable_ result, so a page of malformed entries does not pollute suggestions.
+  `suggestionsFor()` matches word-prefix-wise in both directions: typing `mountain lake`
+  suggests a past `lake mountain view`.
+
+## Image preview and polygon editor
+
+`SearchShell` → `ImagePreviewDialogService` (lazy `import()` of the dialog component, NG-ZORRO
+modal, restores focus to the trigger on close) → `ImagePreviewDialog` → `PolygonCanvas`.
+The image is a native `<img>`; the canvas is a transparent overlay positioned over it and
+draws only the polygons and their handles.
+
+### Coordinate model — the central invariant
+
+```ts
+interface Polygon {
+  id: string; // own identity (opaque token, not the image id)
+  imageId: string; // grouping key: which image it belongs to
+  points: readonly NormalizedPoint[]; // vertices in LOCAL space, centroid at (0,0)
+  position: NormalizedPoint; // world-space centroid, 0..1 of the image box
+  rotationRadians: number; // rotation about that centroid
+  scale: number; // uniform, clamped to [0.1, 5]
+  createdAt: number; // for deterministic capacity eviction
+}
+```
+
+Two coordinate systems, never mixed silently:
+
+- **Normalized image space** (`0..1`) — everything stored in NgRx. Resolution-independent, so
+  the polygon keeps its proportions when the image box resizes.
+- **Canvas pixel space** — normalized × the currently rendered `<img>` box size, tracked by a
+  `ResizeObserver` (not `window.resize`, which misses dialog reflow). Conversion happens only
+  in `to-pixel-point.ts` / `to-normalized-point.ts`.
+
+Storing local points + a transform means drag, rotate and scale are each a single-field
+update, so repeated edits accumulate no floating-point drift. The renderable/hit-testable
+shape is composed by one function:
+
+```
+world(p) = rotateAspectCorrected(p × scale, θ, aspectRatio) + position
+```
+
+The aspect correction is what keeps rotation rigid: normalized axes scale independently, so a
+plain rotation matrix would shear the polygon on any non-square image. Substituting pixel
+coordinates into `applyAspectRotation` reduces it to an exact pixel-space rotation.
+Handle positions (`get-handle-points.ts`) are the deliberate exception — they are computed in
+**pixel space** and clamped into the canvas box, because a fixed 28px offset only means
+anything in pixels, and a normalized-space handle would fall off-canvas near an edge.
+
+The rotation pivot is the **arithmetic mean of the vertices**, not the area centroid: it is
+O(n), has no signed-area special cases, and stays defined for the self-intersecting shapes
+free-hand drawing can produce. `compute-centroid.spec.ts` asserts this so a change is deliberate.
+
+### Interaction
+
+- Drawing starts from an explicit "Draw polygon" button (disabled until the image loads — an
+  image can already carry polygons, so an "empty canvas" trigger would be ambiguous). Clicks
+  append vertices; the shape commits (min. 3 points) on double-click, on clicking near the
+  first vertex, or via "Finish polygon".
+- Several polygons per image: Previous/Next cycle `selectedPolygonId`, Delete removes.
+  Hit-testing order is scale handles → rotation handle → topmost body, so handles on a small
+  selected polygon still beat a larger polygon underneath.
+- During a pointer gesture the draft polygon lives in a **component signal** — nothing is
+  dispatched on `pointermove`; only `pointerup` commits through the facade. Gesture teardown
+  also listens for `pointercancel`, `lostpointercapture` and window `blur` so a lost pointer
+  cannot strand the canvas mid-gesture.
+- Keyboard: with a polygon selected the canvas is focusable — arrows nudge, `[`/`]` rotate 15°,
+  `+`/`-` scale, `Delete`/`Backspace` remove, `Escape` deselects; each action is announced
+  through a CDK live announcer. Free-hand vertex placement has no keyboard equivalent.
+- Rendering is coalesced to one paint per animation frame by `CanvasRenderScheduler`, which
+  also owns device-pixel-ratio backing-store sizing.
+
+## Constraints worth knowing before changing things
+
+- Components never call `HttpClient` or `Store` directly — data access sits in
+  `data-access/`, dispatch and selection behind the feature facade.
+- Geometry belongs in `image-editor/domain/geometry/` as pure functions. `rendering/` and
+  `interaction/` translate; they do not invent coordinate math.
+- Anything crossing two features goes in `shell/`; the lint rule and boundary spec will fail
+  otherwise.
+- `Date.now()` in app code goes through the `CLOCK` token, and polygon ids through `POLYGON_ID`
+  (`crypto.randomUUID` with a counter fallback for non-secure contexts), so tests stay
+  deterministic.
+- All components are `OnPush` and consume signals; there are no manual `subscribe` calls in
+  components other than the pointer-gesture streams, which are tied to `DestroyRef`.
+
+## Known limitations and trade-offs
+
+- **No persistence layer.** History and polygons are in-memory NgRx state and reset on reload.
+- **Prerendered shell only.** `RenderMode.Prerender` on `/` with `outputMode: "static"` gives
+  crawlers real HTML; search results are per-user client state and were never indexable.
+  Metadata is static in `index.html` — no `Meta`/`Title` service, since nothing varies per view.
+- **Eager modal CSS.** `ng-zorro-antd/modal/style/index.min.css` stays in the eager `styles`
+  array although the dialog is lazily imported: Ant Design modal styles are global, and scoping
+  them to the component would need `ViewEncapsulation.None` and blow the 8 kB
+  `anyComponentStyle` budget.
+- **Bundle budget is 900 kB, not the default 500 kB.** The measured floor is ~797 kB raw
+  (~191 kB transferred) after deduplicating the CDK, dropping `lodash`, and replacing
+  `nz-autocomplete` with a first-party ARIA combobox — the eager NG-ZORRO and CDK modules are
+  most of it. The budget is set to warn on a real regression rather than on the current baseline.
+- `nz-autocomplete` was replaced because `nz-auto-option` hard-codes `role="menuitem"`, which a
+  valid ARIA 1.2 combobox may not own.
+- Openverse's anonymous rate limit is not published as a number; `429` is retried with backoff
+  and then surfaced as a user-facing error.
+- `selectedPolygonId` is a single global field, so opening a different image's dialog clears
+  the previous selection.
+
+## Development notes
+
+Built with AI-assisted development under written plans that are reviewed before implementation;
+the plans (`docs/`) and the reusable engineering guidance (`.ai/skills/`) are gitignored, so a
+clone contains only the application. See [AGENTS.md](AGENTS.md) for the conventions that apply
+when changing this repository.

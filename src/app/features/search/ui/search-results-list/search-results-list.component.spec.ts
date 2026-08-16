@@ -149,6 +149,14 @@ describe('SearchResultsList', () => {
     }
     const items = fixture.nativeElement.querySelectorAll('.search-results-list__item');
     expect(items.length).toBeGreaterThan(0);
-    items.forEach((item: Element) => expect(item.getAttribute('role')).toBe('listitem'));
+
+    const wrapper = viewport.querySelector('.cdk-virtual-scroll-content-wrapper');
+    expect(wrapper.getAttribute('role')).toBe('none');
+
+    items.forEach((item: Element, index: number) => {
+      expect(item.getAttribute('role')).toBe('listitem');
+      expect(item.getAttribute('aria-posinset')).toBe(`${index + 1}`);
+      expect(item.getAttribute('aria-setsize')).toBe('3');
+    });
   });
 });

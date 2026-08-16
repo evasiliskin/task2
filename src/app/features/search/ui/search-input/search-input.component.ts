@@ -28,6 +28,7 @@ export class SearchInput {
   readonly suggestionSelected = output<string>();
 
   private readonly instanceId = nextInstanceId++;
+  protected readonly inputId = `search-input-field-${this.instanceId}`;
   protected readonly listboxId = `search-suggestions-${this.instanceId}`;
   protected readonly optionIdPrefix = `search-suggestion-${this.instanceId}`;
 

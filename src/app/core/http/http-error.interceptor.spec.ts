@@ -6,8 +6,13 @@ import {
   withInterceptors,
 } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { httpErrorInterceptor, MAX_RETRY_ATTEMPTS } from './http-error.interceptor';
+import {
+  httpErrorInterceptor,
+  MAX_RETRY_ATTEMPTS,
+  RETRY_BASE_DELAY_MS,
+} from './http-error.interceptor';
 import { HttpFailure } from './http-failure.model';
+import { REQUEST_TIMEOUT_MS, RequestTimeoutError } from './request-timeout.model';
 
 describe('httpErrorInterceptor', () => {
   let http: HttpClient;
@@ -103,6 +108,21 @@ describe('httpErrorInterceptor', () => {
     expect(captured?.kind).toBe('client');
     expect(captured?.cause).toBeInstanceOf(HttpErrorResponse);
     expect(captured?.cause.status).toBe(404);
+  });
+
+  it('should fail with a RequestTimeoutError, when the response never arrives', async () => {
+    vi.useFakeTimers();
+    let captured: unknown;
+    http.get('/test').subscribe({ error: (error: unknown) => (captured = error) });
+
+    for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+      httpMock.expectOne('/test');
+      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+      await vi.advanceTimersByTimeAsync(RETRY_BASE_DELAY_MS * 2 ** attempt);
+    }
+
+    expect(captured).toBeInstanceOf(RequestTimeoutError);
+    vi.useRealTimers();
   });
 
   it('should not retry, when the failing request is a POST', () => {

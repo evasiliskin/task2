@@ -31,6 +31,12 @@ describe('searchErrorMessage', () => {
     );
   });
 
+  it('should preserve the timeout copy', () => {
+    expect(searchErrorMessage('timeout')).toBe(
+      'The image service took too long to respond. Please try again.',
+    );
+  });
+
   it('should preserve the fallback copy', () => {
     expect(searchErrorMessage('unknown')).toBe('Something went wrong. Please try again.');
   });

@@ -135,6 +135,12 @@ export class PolygonCanvas {
   }
 
   protected onPointerDown(event: PointerEvent): void {
+    // Only the primary button drives drawing and gestures; a context-menu click must not
+    // place a vertex or start a drag that the menu then interrupts.
+    if (event.button !== 0) {
+      return;
+    }
+
     const boxSize = this.boxSize();
     if (this.imageStatus() !== 'loaded' || boxSize.width === 0 || boxSize.height === 0) {
       return;
@@ -317,6 +323,9 @@ export class PolygonCanvas {
   protected onDeletePolygon(polygonId: string): void {
     this.announce('Polygon deleted.');
     this.polygonDeleted.emit(polygonId);
+    // The toolbar button that triggered this may now be removed from the DOM; keep focus on the
+    // canvas, which always exists and is where editing continues.
+    this.canvasEl().nativeElement.focus();
   }
 
   protected onSelectPrevious(): void {
@@ -335,6 +344,7 @@ export class PolygonCanvas {
     const currentIndex = this.selectedIndex();
     const nextIndex =
       currentIndex === -1 ? 0 : (currentIndex + offset + polygons.length) % polygons.length;
+    this.announce(`Polygon ${nextIndex + 1} of ${polygons.length} selected.`);
     this.polygonSelected.emit(polygons[nextIndex].id);
   }
 

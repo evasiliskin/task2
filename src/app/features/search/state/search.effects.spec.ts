@@ -157,6 +157,22 @@ describe('SearchEffects', () => {
     expect(cancelled, 'switchMap should have torn down the first request').toBe(true);
   });
 
+  it('should unsubscribe the in-flight request, when the query is cleared', () => {
+    let cancelled = false;
+    repository.search.mockImplementation(
+      () =>
+        new Observable(() => () => {
+          cancelled = true;
+        }),
+    );
+
+    effects.performSearch$.subscribe();
+    actions$.next(SearchActions.searchRequested({ query: 'cats' }));
+    actions$.next(SearchActions.queryCleared());
+
+    expect(cancelled, 'clearing the query should tear down the in-flight request').toBe(true);
+  });
+
   it('should re-issue the same query through retry, when a search has failed', () => {
     store.setState({
       search: { ...initialState, activeQuery: 'cats', status: 'error', error: 'unknown' },
