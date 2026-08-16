@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideMockStore, MockStore } from '@ngrx/store/testing';
-import { SearchActions } from './state/search.actions';
+import { SearchActions, SearchPageActions } from './state/search.actions';
 import { initialState, searchFeature } from './state/search.reducer';
 import { SearchFacade } from './search.facade';
 import { SEARCH_DEBOUNCE_MS } from './domain/search-debounce';
@@ -73,5 +73,29 @@ describe('SearchFacade', () => {
     vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
 
     expect(store.dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it('should dispatch a next-page request, when the next page is loaded', () => {
+    facade.loadNextPage();
+
+    expect(store.dispatch).toHaveBeenCalledWith(SearchPageActions.nextPageRequested());
+  });
+
+  it('should dispatch a retry request, when a retry is asked for', () => {
+    facade.retry();
+
+    expect(store.dispatch).toHaveBeenCalledWith(SearchActions.retryRequested());
+  });
+
+  it('should expose the initial view model, when the store holds the initial state', () => {
+    expect(facade.viewModel()).toEqual({
+      results: [],
+      status: 'idle',
+      error: null,
+      activeQuery: null,
+      hasMoreResults: false,
+      isLoadingMore: false,
+      isLoadingMoreError: false,
+    });
   });
 });

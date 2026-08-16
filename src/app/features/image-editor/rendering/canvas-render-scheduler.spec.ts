@@ -1,6 +1,8 @@
 import { CanvasRenderScheduler } from './canvas-render-scheduler';
 import { RenderFrame } from './render-frame.model';
 
+const SECOND_POLYGON_ID = '6ba7b810-9dad-41d1-80b4-00c04fd430c8';
+
 function aFrame(overrides: Partial<RenderFrame> = {}): RenderFrame {
   return {
     size: { width: 200, height: 100 },
@@ -28,11 +30,14 @@ describe('CanvasRenderScheduler', () => {
     const scheduler = new CanvasRenderScheduler(renderer as never);
 
     scheduler.schedule(canvas, aFrame());
-    scheduler.schedule(canvas, aFrame({ selectedId: 'p2' }));
+    scheduler.schedule(canvas, aFrame({ selectedId: SECOND_POLYGON_ID }));
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
 
     expect(renderer.render).toHaveBeenCalledTimes(1);
-    expect(renderer.render).toHaveBeenCalledWith(context, [], 'p2', { width: 200, height: 100 });
+    expect(renderer.render).toHaveBeenCalledWith(context, [], SECOND_POLYGON_ID, {
+      width: 200,
+      height: 100,
+    });
   });
 
   it('should size the backing store to the device pixel ratio, when a frame is painted', async () => {

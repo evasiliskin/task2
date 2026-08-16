@@ -1,158 +1,179 @@
-import { TestBed } from '@angular/core/testing';
-import { SearchResultsList } from './search-results-list.component';
+import { CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { SearchResult } from '../../domain/search-result.model';
+import { SearchResultsList, VisibleRange } from './search-results-list.component';
 
-function makeResults(count: number): SearchResult[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `${i}`,
-    title: `Result ${i}`,
-    imageUrl: '',
-    thumbnailUrl: '',
-    width: 0,
-    height: 0,
-    creator: null,
-    sourceUrl: '',
-  }));
-}
+const fixtureData = {
+  results: (count: number): SearchResult[] =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `a0eebc99-9c0b-4ef8-bb6d-6bb9bd380${(index + 10).toString(16).padStart(3, '0')}`,
+      title: `Result ${index}`,
+      imageUrl: 'https://images.example.org/full.jpg',
+      thumbnailUrl: 'https://images.example.org/thumb.jpg',
+      width: 800,
+      height: 600,
+      creator: null,
+      sourceUrl: 'https://images.example.org/source',
+    })),
+};
 
 describe('SearchResultsList', () => {
-  it('emits scrolled with the first visible index and the visible row count', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(20));
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.detectChanges();
-
-    const scrolledSpy = vi.fn();
-    fixture.componentInstance.scrolled.subscribe(scrolledSpy);
-
-    (
-      fixture.componentInstance as unknown as { onScrolledIndexChange(i: number): void }
-    ).onScrolledIndexChange(15);
-
-    expect(scrolledSpy).toHaveBeenCalledWith(expect.objectContaining({ firstVisibleIndex: 15 }));
+  beforeEach(() => {
+    vi.useFakeTimers();
   });
 
-  it('renders the inline retry block when isLoadingMoreError is true', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.componentRef.setInput('isLoadingMoreError', true);
-    fixture.detectChanges();
-
-    const errorBlock = fixture.nativeElement.querySelector('.search-results-list__load-more-error');
-    expect(errorBlock).toBeTruthy();
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('renders the inline retry block outside the virtual-scroll viewport, so it is not clipped by it', () => {
+  function render(inputs: {
+    results: readonly SearchResult[];
+    isLoadingMore?: boolean;
+    isLoadingMoreError?: boolean;
+  }): ComponentFixture<SearchResultsList> {
     TestBed.configureTestingModule({ imports: [SearchResultsList] });
     const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.componentRef.setInput('isLoadingMoreError', true);
+    fixture.componentRef.setInput('results', inputs.results);
+    fixture.componentRef.setInput('isLoadingMore', inputs.isLoadingMore ?? false);
+    fixture.componentRef.setInput('isLoadingMoreError', inputs.isLoadingMoreError ?? false);
     fixture.detectChanges();
+
+    return fixture;
+  }
+
+  function scrollToIndex(
+    fixture: ComponentFixture<SearchResultsList>,
+    firstVisibleIndex: number,
+    viewportSize: number,
+  ): void {
+    const viewport = fixture.debugElement.query(By.directive(CdkVirtualScrollViewport));
+    vi.spyOn(
+      viewport.componentInstance as CdkVirtualScrollViewport,
+      'getViewportSize',
+    ).mockReturnValue(viewportSize);
+    viewport.triggerEventHandler('scrolledIndexChange', firstVisibleIndex);
+  }
+
+  async function renderedRows(
+    fixture: ComponentFixture<SearchResultsList>,
+  ): Promise<NodeListOf<Element>> {
+    await vi.advanceTimersByTimeAsync(16);
+    fixture.detectChanges();
+
+    return fixture.nativeElement.querySelectorAll('.search-results-list__item');
+  }
+
+  it('should render a row per result, when results are given', async () => {
+    const fixture = render({ results: fixtureData.results(3) });
+
+    const rows = await renderedRows(fixture);
+
+    expect(rows.length).toBe(3);
+    expect(fixture.nativeElement.textContent).toContain('Result 0');
+  });
+
+  it('should render no rows, when there are no results', async () => {
+    const fixture = render({ results: [] });
+
+    const rows = await renderedRows(fixture);
+
+    expect(rows.length).toBe(0);
+  });
+
+  it('should expose the rows as a list to assistive technology, when results are rendered', async () => {
+    const fixture = render({ results: fixtureData.results(3) });
+
+    const rows = await renderedRows(fixture);
+
+    const viewport = fixture.nativeElement.querySelector('cdk-virtual-scroll-viewport');
+    expect(viewport.getAttribute('role')).toBe('list');
+    expect(viewport.querySelector('.cdk-virtual-scroll-content-wrapper').getAttribute('role')).toBe(
+      'none',
+    );
+    rows.forEach((row: Element, index: number) => {
+      expect(row.getAttribute('role')).toBe('listitem');
+      expect(row.getAttribute('aria-posinset')).toBe(`${index + 1}`);
+      expect(row.getAttribute('aria-setsize')).toBe('3');
+    });
+  });
+
+  it('should emit the selected result, when a row is clicked', async () => {
+    const results = fixtureData.results(3);
+    const fixture = render({ results });
+    const rows = await renderedRows(fixture);
+
+    let selectedResult: SearchResult | undefined;
+    fixture.componentInstance.resultSelected.subscribe((result) => (selectedResult = result));
+    (rows[1].querySelector('button') as HTMLButtonElement).click();
+
+    expect(selectedResult).toEqual(results[1]);
+  });
+
+  it('should emit the visible range, when the scrolled index changes', () => {
+    const fixture = render({ results: fixtureData.results(100) });
+
+    let visibleRange: VisibleRange | undefined;
+    fixture.componentInstance.scrolled.subscribe((range) => (visibleRange = range));
+    scrollToIndex(fixture, 88, 1152);
+
+    expect(visibleRange).toEqual({ firstVisibleIndex: 88, visibleRowCount: 12 });
+  });
+
+  it('should emit a visible row count of zero, when the viewport has no measurable size', () => {
+    const fixture = render({ results: fixtureData.results(100) });
+
+    let visibleRange: VisibleRange | undefined;
+    fixture.componentInstance.scrolled.subscribe((range) => (visibleRange = range));
+    scrollToIndex(fixture, 15, 0);
+
+    expect(visibleRange).toEqual({ firstVisibleIndex: 15, visibleRowCount: 0 });
+  });
+
+  it('should announce loading politely, when another page is loading', () => {
+    const fixture = render({ results: fixtureData.results(5), isLoadingMore: true });
+
+    const loadingBlock = fixture.nativeElement.querySelector('.search-results-list__loading-more');
+    expect(loadingBlock.getAttribute('aria-live')).toBe('polite');
+    expect(loadingBlock.textContent).toContain('Loading more results');
+  });
+
+  it('should render the inline retry block instead of the loading indicator, when loading more failed', () => {
+    const fixture = render({ results: fixtureData.results(5), isLoadingMoreError: true });
+
+    expect(
+      fixture.nativeElement.querySelector('.search-results-list__load-more-error'),
+    ).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('Loading more results');
+  });
+
+  it('should render the inline retry block outside the scroll viewport, when loading more failed', () => {
+    const fixture = render({ results: fixtureData.results(5), isLoadingMoreError: true });
 
     const viewport = fixture.nativeElement.querySelector('cdk-virtual-scroll-viewport');
     const errorBlock = fixture.nativeElement.querySelector('.search-results-list__load-more-error');
     expect(viewport.contains(errorBlock)).toBe(false);
   });
 
-  it('emits retry when the inline retry button is clicked', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.componentRef.setInput('isLoadingMoreError', true);
-    fixture.detectChanges();
+  it('should not render the inline retry block, when loading more has not failed', () => {
+    const fixture = render({ results: fixtureData.results(5) });
 
-    const retrySpy = vi.fn();
-    fixture.componentInstance.retry.subscribe(retrySpy);
-    const button = fixture.nativeElement.querySelector(
-      '.search-results-list__load-more-error button',
-    ) as HTMLButtonElement;
-    button.click();
-
-    expect(retrySpy).toHaveBeenCalled();
+    expect(
+      fixture.nativeElement.querySelector('.search-results-list__load-more-error'),
+    ).toBeFalsy();
   });
 
-  it('does not render the inline retry block when isLoadingMoreError is false', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.detectChanges();
+  it('should emit retry, when the inline retry button is clicked', () => {
+    const fixture = render({ results: fixtureData.results(5), isLoadingMoreError: true });
 
-    const errorBlock = fixture.nativeElement.querySelector('.search-results-list__load-more-error');
-    expect(errorBlock).toBeFalsy();
-  });
+    let retried = false;
+    fixture.componentInstance.retry.subscribe(() => (retried = true));
+    (
+      fixture.nativeElement.querySelector(
+        '.search-results-list__load-more-error button',
+      ) as HTMLButtonElement
+    ).click();
 
-  it('does not render the loading-more indicator when isLoadingMoreError is true', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.componentRef.setInput('isLoadingMoreError', true);
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.textContent).not.toContain('Loading more results');
-  });
-
-  it('should mark the loading-more indicator as a polite live status region', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(5));
-    fixture.componentRef.setInput('isLoadingMore', true);
-    fixture.detectChanges();
-
-    const loadingBlock = fixture.nativeElement.querySelector('.search-results-list__loading-more');
-    expect(loadingBlock.getAttribute('aria-live')).toBe('polite');
-  });
-
-  it('emits scrolled with a visible row count derived from the viewport size', () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(100));
-    fixture.componentRef.setInput('isLoadingMore', false);
-    fixture.detectChanges();
-
-    const instance = fixture.componentInstance as unknown as {
-      onScrolledIndexChange(i: number): void;
-      viewport: () => { getViewportSize(): number } | undefined;
-    };
-    Object.defineProperty(instance, 'viewport', { value: () => ({ getViewportSize: () => 1152 }) });
-
-    const scrolledSpy = vi.fn();
-    fixture.componentInstance.scrolled.subscribe(scrolledSpy);
-
-    instance.onScrolledIndexChange(88);
-
-    expect(scrolledSpy).toHaveBeenCalledWith({ firstVisibleIndex: 88, visibleRowCount: 12 });
-  });
-
-  it('exposes the results as a list for assistive technology', async () => {
-    TestBed.configureTestingModule({ imports: [SearchResultsList] });
-    const fixture = TestBed.createComponent(SearchResultsList);
-    fixture.componentRef.setInput('results', makeResults(3));
-    fixture.detectChanges();
-
-    const viewport = fixture.nativeElement.querySelector('cdk-virtual-scroll-viewport');
-    expect(viewport.getAttribute('role')).toBe('list');
-
-    for (let i = 0; i < 3; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      fixture.detectChanges();
-    }
-    const items = fixture.nativeElement.querySelectorAll('.search-results-list__item');
-    expect(items.length).toBeGreaterThan(0);
-
-    const wrapper = viewport.querySelector('.cdk-virtual-scroll-content-wrapper');
-    expect(wrapper.getAttribute('role')).toBe('none');
-
-    items.forEach((item: Element, index: number) => {
-      expect(item.getAttribute('role')).toBe('listitem');
-      expect(item.getAttribute('aria-posinset')).toBe(`${index + 1}`);
-      expect(item.getAttribute('aria-setsize')).toBe('3');
-    });
+    expect(retried).toBe(true);
   });
 });

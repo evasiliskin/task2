@@ -55,7 +55,7 @@ describe('query-history reducer', () => {
     });
   });
 
-  it('should store the canonical form and the word list alongside the original query', () => {
+  it('should store the canonical form and words beside the raw query, when a query is recorded', () => {
     const next = queryHistoryFeature.reducer(
       initialState,
       QueryHistoryActions.queryRecorded({ query: 'Mountain Lake', usedAt: 1 }),

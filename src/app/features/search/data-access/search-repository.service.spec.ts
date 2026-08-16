@@ -9,7 +9,7 @@ const RESPONSE = {
   page_count: 3,
   results: [
     {
-      id: 'a',
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       title: 'Alpha',
       url: 'https://example.test/a.jpg',
       thumbnail: 'https://example.test/a-thumb.jpg',
@@ -39,7 +39,7 @@ describe('SearchRepository', () => {
     expect(page).toEqual({
       results: [
         {
-          id: 'a',
+          id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
           title: 'Alpha',
           imageUrl: 'https://example.test/a.jpg',
           thumbnailUrl: 'https://example.test/a-thumb.jpg',
@@ -62,6 +62,38 @@ describe('SearchRepository', () => {
     controller.expectOne((request) => request.url.endsWith('/images/')).flush(RESPONSE);
 
     repository.search('cats', 1).subscribe();
+    controller.verify();
+  });
+
+  it('should propagate the failure, when the API responds with a server error', () => {
+    const repository = TestBed.inject(SearchRepository);
+    const controller = TestBed.inject(HttpTestingController);
+    let status: number | undefined;
+
+    repository
+      .search('cats', 1)
+      .subscribe({ error: (error: { status: number }) => (status = error.status) });
+    controller
+      .expectOne((request) => request.url.endsWith('/images/'))
+      .flush({ message: 'Internal Server Error' }, { status: 500, statusText: 'Server Error' });
+
+    expect(status).toBe(500);
+  });
+
+  it('should request the API again, when a previously failed page is requested again', () => {
+    const repository = TestBed.inject(SearchRepository);
+    const controller = TestBed.inject(HttpTestingController);
+
+    repository.search('cats', 1).subscribe({ error: () => undefined });
+    controller
+      .expectOne((request) => request.url.endsWith('/images/'))
+      .flush({ message: 'Internal Server Error' }, { status: 500, statusText: 'Server Error' });
+
+    repository.search('cats', 1).subscribe({ error: () => undefined });
+
+    controller
+      .expectOne((request) => request.url.endsWith('/images/'))
+      .flush({}, { status: 500, statusText: 'Server Error' });
     controller.verify();
   });
 

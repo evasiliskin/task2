@@ -39,18 +39,18 @@ function featureReachedBy(path: string, specifier: string): string | null {
 describe('feature boundaries', () => {
   const files = typeScriptFilesUnder(FEATURES_ROOT);
 
-  it('should find feature source files to inspect', () => {
+  it('should find feature source files, when the features tree is scanned', () => {
     expect(files.length).toBeGreaterThan(20);
   });
 
-  it('should not import another feature through its barrel, from inside a feature', () => {
+  it('should have no barrel import of another feature, when a file lives inside a feature', () => {
     const offenders = files.filter((path) =>
       importSpecifiersIn(path).some((specifier) => FEATURE_BARRELS.includes(specifier)),
     );
     expect(offenders).toEqual([]);
   });
 
-  it('should not climb out of its own feature with a relative path, from inside a feature', () => {
+  it('should have no relative import reaching another feature, when a file lives inside a feature', () => {
     const offenders = files.filter((path) => {
       const ownFeature = ownFeatureOf(path);
       if (!ownFeature) {

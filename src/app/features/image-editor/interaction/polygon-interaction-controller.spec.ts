@@ -8,11 +8,14 @@ import {
   PolygonInteractionController,
 } from './polygon-interaction-controller';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+
 describe('PolygonInteractionController', () => {
   const boxSize: CanvasBoxSize = { width: 100, height: 100 };
   const square: Polygon = {
-    id: 'image-1',
-    imageId: 'image-1',
+    id: IMAGE_ID,
+    imageId: IMAGE_ID,
     points: [
       { x: -0.1, y: -0.1 },
       { x: 0.1, y: -0.1 },
@@ -113,7 +116,7 @@ describe('PolygonInteractionController', () => {
   });
 
   describe('nextPosition', () => {
-    it('should move the polygon position by the given normalized delta', () => {
+    it('should move the position by the delta, when the polygon is nudged', () => {
       const controller = new PolygonInteractionController();
 
       const updated = controller.nextPosition(square, { x: 0.02, y: 0 });
@@ -136,7 +139,7 @@ describe('PolygonInteractionController', () => {
   });
 
   describe('nextRotation', () => {
-    it('should add the given radians to the current rotation', () => {
+    it('should add the radians to the current rotation, when the polygon is stepped', () => {
       const controller = new PolygonInteractionController();
 
       const updated = controller.nextRotation(square, Math.PI / 12);
@@ -166,8 +169,8 @@ describe('PolygonInteractionController — scaling', () => {
   const controller = new PolygonInteractionController();
 
   const square: Polygon = {
-    id: 'p1',
-    imageId: 'i1',
+    id: POLYGON_ID,
+    imageId: IMAGE_ID,
     points: [
       { x: -0.1, y: -0.1 },
       { x: 0.1, y: -0.1 },

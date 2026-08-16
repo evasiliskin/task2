@@ -2,11 +2,14 @@ import { Polygon } from '../polygon.model';
 import { getWorldPoints, toWorldPoints } from './get-world-points';
 import { toWorldPoint } from './to-world-point';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+
 describe('getWorldPoints', () => {
   it('should return points offset by position, when rotation is zero', () => {
     const polygon: Polygon = {
-      id: 'polygon-1',
-      imageId: 'image-1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [
         { x: -1, y: 0 },
         { x: 1, y: 0 },
@@ -27,8 +30,8 @@ describe('getWorldPoints', () => {
 
   it('should rotate points around the position, when rotation is non-zero', () => {
     const polygon: Polygon = {
-      id: 'polygon-1',
-      imageId: 'image-1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [{ x: 1, y: 0 }],
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
@@ -44,8 +47,8 @@ describe('getWorldPoints', () => {
 
   it('should apply the aspect correction across all points, when aspect ratio is not 1', () => {
     const polygon: Polygon = {
-      id: 'polygon-1',
-      imageId: 'image-1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [{ x: 1, y: 0 }],
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
@@ -61,8 +64,8 @@ describe('getWorldPoints', () => {
 
   it('should match per-point conversion, when a rotated polygon is converted in bulk', () => {
     const polygon: Polygon = {
-      id: 'image-1',
-      imageId: 'image-1',
+      id: IMAGE_ID,
+      imageId: IMAGE_ID,
       points: [
         { x: -0.1, y: -0.1 },
         { x: 0.1, y: -0.1 },
@@ -83,8 +86,8 @@ describe('getWorldPoints', () => {
 describe('getWorldPoints with scale', () => {
   it('should place vertices twice as far from the centroid, when scale is 2 and rotation is 0', () => {
     const polygon = {
-      id: 'p1',
-      imageId: 'i1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [
         { x: -0.1, y: -0.1 },
         { x: 0.1, y: -0.1 },
@@ -105,8 +108,8 @@ describe('getWorldPoints with scale', () => {
 
   it('should keep the centroid fixed, when the scale changes', () => {
     const base = {
-      id: 'p1',
-      imageId: 'i1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [
         { x: -0.1, y: -0.1 },
         { x: 0.1, y: -0.1 },
@@ -134,8 +137,8 @@ describe('getWorldPoints with scale', () => {
 describe('cross-check with toWorldPoint', () => {
   it('should agree with toWorldPoint for every vertex, when the polygon is rotated and scaled', () => {
     const polygon: Polygon = {
-      id: 'p1',
-      imageId: 'i1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [
         { x: -0.1, y: -0.1 },
         { x: 0.1, y: -0.1 },
@@ -157,8 +160,8 @@ describe('cross-check with toWorldPoint', () => {
 describe('ratio preservation', () => {
   it('should scale pixel geometry proportionally, when the canvas box grows uniformly', () => {
     const polygon = {
-      id: 'p1',
-      imageId: 'i1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [
         { x: -0.1, y: -0.05 },
         { x: 0.1, y: -0.05 },

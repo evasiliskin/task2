@@ -22,7 +22,7 @@ describe('App', () => {
     expect(fixture.nativeElement.querySelector('router-outlet')).toBeTruthy();
   });
 
-  it('should render the app title in the header', () => {
+  it('should render the app title, when the shell renders', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.app-shell__title')?.textContent).toContain(

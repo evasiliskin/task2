@@ -40,4 +40,27 @@ describe('OpenverseApi', () => {
     expect(req.request.method).toBe('GET');
     req.flush(response);
   });
+
+  it('should emit the response body, when the API responds successfully', () => {
+    const response: OpenverseSearchResponseDto = { result_count: 0, page_count: 0, results: [] };
+    let received: unknown;
+
+    api.searchImages('cats', 1, 20).subscribe((value) => (received = value));
+    httpMock.expectOne((request) => request.url === 'https://api.test/v1/images/').flush(response);
+
+    expect(received).toEqual(response);
+  });
+
+  it('should propagate the failure, when the API responds with a server error', () => {
+    let status: number | undefined;
+
+    api
+      .searchImages('cats', 1, 20)
+      .subscribe({ error: (error: { status: number }) => (status = error.status) });
+    httpMock
+      .expectOne((request) => request.url === 'https://api.test/v1/images/')
+      .flush({ message: 'Internal Server Error' }, { status: 500, statusText: 'Server Error' });
+
+    expect(status).toBe(500);
+  });
 });

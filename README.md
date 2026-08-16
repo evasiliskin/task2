@@ -75,7 +75,7 @@ supplied by the `OPENVERSE_API_CONFIG` injection token
 ## Testing
 
 ```bash
-pnpm run test:ci     # Vitest, single run (66 files, 434 tests)
+pnpm run test:ci     # Vitest, single run (70 files, 481 tests)
 pnpm test            # Vitest, watch mode
 pnpm run e2e         # Playwright, 8 tests across 6 specs
 ```

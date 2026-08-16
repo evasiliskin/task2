@@ -4,8 +4,10 @@ import { of, Subject } from 'rxjs';
 import { ImagePreviewTarget } from '../../domain/image-preview-target.model';
 import { ImagePreviewDialogService } from './image-preview-dialog.service';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
 const target: ImagePreviewTarget = {
-  imageId: 'image-1',
+  imageId: IMAGE_ID,
   imageUrl: 'https://example.test/full.jpg',
   title: 'A mountain',
   width: 1600,
@@ -50,7 +52,7 @@ describe('ImagePreviewDialogService', () => {
     service = TestBed.inject(ImagePreviewDialogService);
   });
 
-  it('should open a modal titled with the target and carrying the target as data', async () => {
+  it('should open a modal titled with the target and carrying it as data, when opened', async () => {
     await service.open(target);
 
     expect(create).toHaveBeenCalledTimes(1);
@@ -94,7 +96,7 @@ describe('ImagePreviewDialogService', () => {
     expect(TestBed.inject(NzModalService).openModals).toHaveLength(1);
   });
 
-  it('sets aria-modal and aria-labelledby on the dialog container, referencing the ant-modal-title element', async () => {
+  it('should label the dialog by its title element, when the modal has opened', async () => {
     const titleEl = document.createElement('div');
     titleEl.className = 'ant-modal-title';
     modalElement.appendChild(titleEl);
@@ -108,15 +110,13 @@ describe('ImagePreviewDialogService', () => {
     expect(titleEl.id).toBe(labelledBy);
   });
 
-  it('should log a diagnostic and leave the dialog usable, when the expected title element is missing', () => {
-    const serviceWithPrivateAccess = service as unknown as {
-      labelDialog(modalRef: { getElement(): HTMLElement }): void;
-    };
-    const emptyModalRef = { getElement: () => document.createElement('div') };
-    const labelDialogWithMissingTitle = () => serviceWithPrivateAccess.labelDialog(emptyModalRef);
+  it('should log a diagnostic and leave the dialog unlabelled, when the title element is missing', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    expect(() => labelDialogWithMissingTitle()).not.toThrow();
+    await service.open(target);
+    afterOpen.next();
+
     expect(error).toHaveBeenCalled();
+    expect(modalElement.getAttribute('aria-labelledby')).toBeNull();
   });
 });

@@ -17,8 +17,11 @@ describe('appConfig', () => {
     expect(() => TestBed.inject(ImageEditorFacade)).not.toThrow();
   });
 
-  it('should include devtools providers only in dev mode', () => {
+  it('should include devtools providers, when running in dev mode', () => {
     expect(devtoolsProviders(true).length).toBeGreaterThan(0);
+  });
+
+  it('should include no devtools providers, when not running in dev mode', () => {
     expect(devtoolsProviders(false)).toEqual([]);
   });
 });

@@ -231,7 +231,7 @@ describe('search reducer', () => {
       status: 'loading' as const,
     };
 
-    it('should ignore a failure for a query that is no longer active', () => {
+    it('should ignore the failure, when it belongs to a query that is no longer active', () => {
       const next = searchFeature.reducer(
         loadingState,
         SearchApiActions.loadResultsFailure({ query: 'cat', page: 2, kind: 'unknown' }),
@@ -241,7 +241,7 @@ describe('search reducer', () => {
       expect(next.error).toBeNull();
     });
 
-    it('should apply a failure for page 1 of the active query while loading', () => {
+    it('should move to the error status, when the first page of the active query fails', () => {
       const next = searchFeature.reducer(
         loadingState,
         SearchApiActions.loadResultsFailure({ query: 'dog', page: 1, kind: 'unknown' }),
@@ -251,7 +251,7 @@ describe('search reducer', () => {
       expect(next.error).toBe('unknown');
     });
 
-    it('should apply a failure for the next page of the active query while loading more', () => {
+    it('should move to the load-more error status, when the next page of the active query fails', () => {
       const next = searchFeature.reducer(
         { ...initialState, activeQuery: 'dog', status: 'loadingMore', page: 1, pageCount: 3 },
         SearchApiActions.loadResultsFailure({ query: 'dog', page: 2, kind: 'unknown' }),
@@ -261,7 +261,7 @@ describe('search reducer', () => {
       expect(next.error).toBe('unknown');
     });
 
-    it('should ignore a failure for a page other than the one being awaited', () => {
+    it('should ignore the failure, when it belongs to a page other than the awaited one', () => {
       const next = searchFeature.reducer(
         { ...initialState, activeQuery: 'dog', status: 'loadingMore', page: 1, pageCount: 5 },
         SearchApiActions.loadResultsFailure({ query: 'dog', page: 4, kind: 'unknown' }),
@@ -294,7 +294,7 @@ describe('search selectors', () => {
     ).toBe(false);
   });
 
-  it('should project the full view model from one selector', () => {
+  it('should project the full view model, when the view-model selector runs', () => {
     const state = searchFeature.reducer(
       { ...initialState, activeQuery: 'cats' },
       SearchApiActions.loadResultsSuccess({

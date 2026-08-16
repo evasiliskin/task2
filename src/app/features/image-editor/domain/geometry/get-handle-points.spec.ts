@@ -6,12 +6,16 @@ import {
 } from './get-handle-points';
 import { Polygon } from '../polygon.model';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+
 const BOX = { width: 400, height: 400 };
 
 function polygonAt(y: number, rotationRadians = 0, scale = 1): Polygon {
   return {
-    id: 'p1',
-    imageId: 'i1',
+    id: POLYGON_ID,
+    imageId: IMAGE_ID,
     points: [
       { x: -0.1, y: -0.1 },
       { x: 0.1, y: -0.1 },
@@ -49,8 +53,8 @@ describe('getRotationHandlePixel', () => {
 
   it('should place the handle below the shape, when the polygon sits against the top edge', () => {
     const polygon: Polygon = {
-      id: 'p1',
-      imageId: 'i1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [
         { x: -0.1, y: -0.05 },
         { x: 0.1, y: -0.05 },

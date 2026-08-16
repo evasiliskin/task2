@@ -9,23 +9,23 @@ function readRepositoryFile(relativePath: string): string {
 const html = readRepositoryFile('index.html');
 
 describe('index.html — static SEO metadata', () => {
-  it('sets an English lang attribute', () => {
+  it('should declare an English lang attribute, when the document loads', () => {
     expect(html).toMatch(/<html lang="en">/);
   });
 
-  it('has a non-empty meta description', () => {
+  it('should declare a descriptive meta description, when the document loads', () => {
     expect(html).toMatch(/<meta\s+name="description"\s+content="[^"]{20,}"\s*\/>/);
   });
 
-  it('allows indexing via a robots meta tag', () => {
+  it('should allow indexing, when crawlers read the robots meta tag', () => {
     expect(html).toContain('<meta name="robots" content="index, follow" />');
   });
 
-  it('declares an absolute canonical URL', () => {
+  it('should declare an absolute canonical URL, when the document loads', () => {
     expect(html).toMatch(/<link rel="canonical" href="https:\/\/[^"]+"\s*\/>/);
   });
 
-  it('declares Open Graph title, description, type, url and image', () => {
+  it('should declare the Open Graph tags, when the page is shared', () => {
     expect(html).toContain('property="og:title" content="Image Search"');
     expect(html).toMatch(/property="og:description"\s+content="[^"]{20,}"/);
     expect(html).toContain('property="og:type" content="website"');
@@ -33,11 +33,11 @@ describe('index.html — static SEO metadata', () => {
     expect(html).toMatch(/property="og:image"\s+content="https:\/\/[^"]+\.png"/);
   });
 
-  it('declares a Twitter summary_large_image card', () => {
+  it('should declare a large-image Twitter card, when the page is shared', () => {
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
   });
 
-  it('declares exactly one WebApplication JSON-LD block', () => {
+  it('should declare exactly one WebApplication JSON-LD block, when the document loads', () => {
     const matches = [
       ...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g),
     ];
@@ -49,7 +49,7 @@ describe('index.html — static SEO metadata', () => {
     expect(json.description.length).toBeGreaterThan(20);
   });
 
-  it('preconnects to the Openverse API origin', () => {
+  it('should preconnect to the Openverse API origin, when the document loads', () => {
     expect(html).toContain('<link rel="preconnect" href="https://api.openverse.org" />');
   });
 });

@@ -26,7 +26,7 @@ function fieldElement(fixture: ComponentFixture<SearchInput>): HTMLElement {
 }
 
 describe('SearchInput', () => {
-  it('emits queryChange for every keystroke', () => {
+  it('should emit the typed query, when the user types', () => {
     const fixture = renderInput();
 
     const queryChangeSpy = vi.fn();
@@ -40,7 +40,7 @@ describe('SearchInput', () => {
     expect(queryChangeSpy).toHaveBeenCalledWith('dogs');
   });
 
-  it('has an accessible label associated with the input', () => {
+  it('should associate the label with the input, when rendered', () => {
     const fixture = renderInput();
 
     const input = inputElement(fixture);
@@ -65,7 +65,7 @@ describe('SearchInput', () => {
     expect(emitted).toEqual(['']);
   });
 
-  it('should keep the clear button inside the input field row, not as a separate flex row', () => {
+  it('should keep the clear button inside the input field row, when a query is present', () => {
     const fixture = renderInput({ query: 'cats' });
 
     const button = clearButton(fixture);

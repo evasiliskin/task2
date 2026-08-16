@@ -7,7 +7,7 @@ function readPublicFile(name: string): string {
 }
 
 describe('public/robots.txt', () => {
-  it('allows indexing of the whole app and points to the sitemap', () => {
+  it('should allow indexing and point to the sitemap, when crawlers read robots.txt', () => {
     const robotsTxt = readPublicFile('robots.txt');
     expect(robotsTxt).toMatch(/User-agent:\s*\*/);
     expect(robotsTxt).toMatch(/Allow:\s*\//);
@@ -16,7 +16,7 @@ describe('public/robots.txt', () => {
 });
 
 describe('public/sitemap.xml', () => {
-  it("lists exactly the app's one real URL", () => {
+  it("should list exactly the app's one real URL, when crawlers read the sitemap", () => {
     const sitemapXml = readPublicFile('sitemap.xml');
     const locs = [...sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
     expect(locs).toHaveLength(1);

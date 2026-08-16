@@ -1,11 +1,14 @@
 import { Polygon } from '../polygon.model';
 import { toWorldPoint } from './to-world-point';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+
 describe('toWorldPoint', () => {
   it('should return the point offset by position, when rotation is zero', () => {
     const polygon: Polygon = {
-      id: 'polygon-1',
-      imageId: 'image-1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [{ x: -1, y: 0 }],
       position: { x: 5, y: 5 },
       rotationRadians: 0,
@@ -18,8 +21,8 @@ describe('toWorldPoint', () => {
 
   it('should rotate the point rigidly when aspect ratio is 1, when rotation is non-zero', () => {
     const polygon: Polygon = {
-      id: 'polygon-1',
-      imageId: 'image-1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [{ x: 1, y: 0 }],
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,
@@ -35,8 +38,8 @@ describe('toWorldPoint', () => {
 
   it('should apply the aspect correction, when aspect ratio is not 1', () => {
     const polygon: Polygon = {
-      id: 'polygon-1',
-      imageId: 'image-1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [{ x: 1, y: 0 }],
       position: { x: 5, y: 5 },
       rotationRadians: Math.PI / 2,

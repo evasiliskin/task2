@@ -3,6 +3,11 @@ import { Polygon } from '../domain/polygon.model';
 import { DEFAULT_POLYGON_RENDER_OPTIONS, PolygonRenderOptions } from './polygon-render-options';
 import { PolygonCanvasRenderer } from './polygon-canvas-renderer';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+const SECOND_POLYGON_ID = '6ba7b810-9dad-41d1-80b4-00c04fd430c8';
+const THIRD_POLYGON_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
+
 type FakeContext = CanvasRenderingContext2D & {
   calls: string[];
   strokeStyles: string[];
@@ -58,7 +63,7 @@ const BOX: CanvasBoxSize = { width: 100, height: 100 };
 function polygon(id: string): Polygon {
   return {
     id,
-    imageId: 'image-1',
+    imageId: IMAGE_ID,
     points: [
       { x: -0.1, y: -0.1 },
       { x: 0.1, y: -0.1 },
@@ -85,7 +90,7 @@ describe('PolygonCanvasRenderer', () => {
   it('should draw the polygon outline through each world-space vertex in pixel space, when the selected polygon is given', () => {
     const context = createFakeContext();
 
-    new PolygonCanvasRenderer().render(context, [polygon('p1')], 'p1', BOX);
+    new PolygonCanvasRenderer().render(context, [polygon(POLYGON_ID)], POLYGON_ID, BOX);
 
     expect(context.calls).toContain('clearRect');
     expect(context.calls).toContain('moveTo');
@@ -100,8 +105,8 @@ describe('PolygonCanvasRenderer', () => {
 
     new PolygonCanvasRenderer().render(
       context,
-      [polygon('p1')],
-      'p1',
+      [polygon(POLYGON_ID)],
+      POLYGON_ID,
       BOX,
       DEFAULT_POLYGON_RENDER_OPTIONS,
     );
@@ -141,8 +146,8 @@ describe('PolygonCanvasRenderer', () => {
 
     new PolygonCanvasRenderer().render(
       context,
-      [polygon('p1')],
-      'p1',
+      [polygon(POLYGON_ID)],
+      POLYGON_ID,
       BOX,
       DEFAULT_POLYGON_RENDER_OPTIONS,
     );
@@ -163,8 +168,8 @@ describe('PolygonCanvasRenderer', () => {
 
     new PolygonCanvasRenderer().render(
       context,
-      [polygon('p1')],
-      'p1',
+      [polygon(POLYGON_ID)],
+      POLYGON_ID,
       BOX,
       DEFAULT_POLYGON_RENDER_OPTIONS,
     );
@@ -183,7 +188,13 @@ describe('PolygonCanvasRenderer', () => {
       lineWidth: 4,
     };
 
-    new PolygonCanvasRenderer().render(context, [polygon('p1')], 'p1', BOX, customOptions);
+    new PolygonCanvasRenderer().render(
+      context,
+      [polygon(POLYGON_ID)],
+      POLYGON_ID,
+      BOX,
+      customOptions,
+    );
 
     expect(context.arc).toHaveBeenCalledWith(40, 40, 9, 0, Math.PI * 2);
     expect(context.arc).toHaveBeenCalledWith(50, 12, 12, 0, Math.PI * 2);
@@ -195,7 +206,12 @@ describe('PolygonCanvasRenderer', () => {
     const context = createFakeContext();
     const renderer = new PolygonCanvasRenderer();
 
-    renderer.render(context, [polygon('p1'), polygon('p2'), polygon('p3')], 'p2', BOX);
+    renderer.render(
+      context,
+      [polygon(POLYGON_ID), polygon(SECOND_POLYGON_ID), polygon(THIRD_POLYGON_ID)],
+      SECOND_POLYGON_ID,
+      BOX,
+    );
 
     expect(context.calls.filter((call) => call === 'stroke').length).toBeGreaterThanOrEqual(4);
   });
@@ -204,7 +220,7 @@ describe('PolygonCanvasRenderer', () => {
     const context = createFakeContext();
     const renderer = new PolygonCanvasRenderer();
 
-    renderer.render(context, [polygon('p1')], null, BOX);
+    renderer.render(context, [polygon(POLYGON_ID)], null, BOX);
 
     expect(context.strokeStyles).toContain(DEFAULT_POLYGON_RENDER_OPTIONS.mutedStrokeColor);
   });
@@ -213,7 +229,7 @@ describe('PolygonCanvasRenderer', () => {
     const context = createFakeContext();
     const renderer = new PolygonCanvasRenderer();
 
-    renderer.render(context, [polygon('p1'), polygon('p2')], null, BOX);
+    renderer.render(context, [polygon(POLYGON_ID), polygon(SECOND_POLYGON_ID)], null, BOX);
 
     expect(context.calls).not.toContain('arc');
     expect(context.calls).not.toContain('rect');

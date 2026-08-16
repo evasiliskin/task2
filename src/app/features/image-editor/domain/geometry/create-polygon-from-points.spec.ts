@@ -1,5 +1,9 @@
 import { createPolygonFromPoints } from './create-polygon-from-points';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+const SECOND_POLYGON_ID = '6ba7b810-9dad-41d1-80b4-00c04fd430c8';
+
 describe('createPolygonFromPoints', () => {
   it('should center the local points on the centroid, when given a valid triangle', () => {
     const rawPoints = [
@@ -8,11 +12,11 @@ describe('createPolygonFromPoints', () => {
       { x: 2, y: 3 },
     ];
 
-    const polygon = createPolygonFromPoints(rawPoints, 'image-1', 'polygon-1', 0);
+    const polygon = createPolygonFromPoints(rawPoints, IMAGE_ID, POLYGON_ID, 0);
 
     expect(polygon).toEqual({
-      id: 'polygon-1',
-      imageId: 'image-1',
+      id: POLYGON_ID,
+      imageId: IMAGE_ID,
       points: [
         { x: -2, y: -1 },
         { x: 2, y: -1 },
@@ -31,7 +35,7 @@ describe('createPolygonFromPoints', () => {
       { x: 1, y: 1 },
     ];
 
-    expect(() => createPolygonFromPoints(rawPoints, 'image-1', 'polygon-1', 0)).toThrow(
+    expect(() => createPolygonFromPoints(rawPoints, IMAGE_ID, POLYGON_ID, 0)).toThrow(
       'createPolygonFromPoints requires at least 3 points',
     );
   });
@@ -43,13 +47,13 @@ describe('createPolygonFromPoints', () => {
         { x: 0.4, y: 0.2 },
         { x: 0.3, y: 0.4 },
       ],
-      'image-1',
-      'polygon-7',
+      IMAGE_ID,
+      SECOND_POLYGON_ID,
       0,
     );
 
-    expect(polygon.id).toBe('polygon-7');
-    expect(polygon.imageId).toBe('image-1');
+    expect(polygon.id).toBe(SECOND_POLYGON_ID);
+    expect(polygon.imageId).toBe(IMAGE_ID);
     expect(polygon.scale).toBe(1);
   });
 });

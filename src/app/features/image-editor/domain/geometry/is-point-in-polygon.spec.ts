@@ -2,6 +2,9 @@ import { createPolygonFromPoints } from './create-polygon-from-points';
 import { getWorldPoints } from './get-world-points';
 import { isPointInPolygon } from './is-point-in-polygon';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+
 describe('isPointInPolygon', () => {
   const square = [
     { x: 0, y: 0 },
@@ -40,8 +43,8 @@ describe('isPointInPolygon', () => {
         { x: 0.6, y: 0.6 },
         { x: 0.4, y: 0.6 },
       ],
-      'image-1',
-      'polygon-1',
+      IMAGE_ID,
+      POLYGON_ID,
       0,
     );
     const worldPoints = getWorldPoints(polygon, 1);

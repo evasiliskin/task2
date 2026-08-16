@@ -8,6 +8,10 @@ import { NormalizedPoint } from '../../domain/normalized-point.model';
 import { Polygon } from '../../domain/polygon.model';
 import { ImagePreviewDialog } from './image-preview-dialog.component';
 
+const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+const SECOND_POLYGON_ID = '6ba7b810-9dad-41d1-80b4-00c04fd430c8';
+
 @Component({ selector: 'app-polygon-canvas', template: '' })
 class FakePolygonCanvas {
   readonly imageUrl = input.required<string>();
@@ -28,7 +32,7 @@ class FakePolygonCanvas {
 function squarePolygon(id: string): Polygon {
   return {
     id,
-    imageId: 'image-1',
+    imageId: IMAGE_ID,
     position: { x: 0.5, y: 0.5 },
     rotationRadians: 0,
     scale: 1,
@@ -44,7 +48,7 @@ function squarePolygon(id: string): Polygon {
 
 describe('ImagePreviewDialog', () => {
   const target: ImagePreviewTarget = {
-    imageId: 'image-1',
+    imageId: IMAGE_ID,
     imageUrl: 'https://example.test/full.jpg',
     title: 'A mountain',
     width: 1600,
@@ -89,7 +93,7 @@ describe('ImagePreviewDialog', () => {
       .componentInstance as FakePolygonCanvas;
   }
 
-  it('should pass the target image details down to the canvas', () => {
+  it('should pass the target image details to the canvas, when the dialog opens', () => {
     const { fixture } = renderDialog();
 
     const canvas = canvasOf(fixture);
@@ -101,13 +105,15 @@ describe('ImagePreviewDialog', () => {
   });
 
   it('should pass every polygon of the target image to the canvas, when the image has two', () => {
-    const { fixture } = renderDialog({ polygons: [squarePolygon('p1'), squarePolygon('p2')] });
+    const { fixture } = renderDialog({
+      polygons: [squarePolygon(POLYGON_ID), squarePolygon(SECOND_POLYGON_ID)],
+    });
 
     expect(canvasOf(fixture).polygons()).toHaveLength(2);
   });
 
-  it('should pass the selected polygon from the facade down to the canvas', () => {
-    const selectedPolygon = squarePolygon('p1');
+  it('should pass the selected polygon to the canvas, when the facade reports a selection', () => {
+    const selectedPolygon = squarePolygon(POLYGON_ID);
     const { fixture } = renderDialog({ polygons: [selectedPolygon], selectedPolygon });
 
     expect(canvasOf(fixture).selectedPolygon()).toEqual(selectedPolygon);
@@ -129,47 +135,47 @@ describe('ImagePreviewDialog', () => {
 
     canvasOf(fixture).polygonDrawn.emit(points);
 
-    expect(facade.createPolygon).toHaveBeenCalledWith(points, 'image-1');
+    expect(facade.createPolygon).toHaveBeenCalledWith(points, IMAGE_ID);
   });
 
   it('should move the polygon via the facade, when the canvas emits polygonMoved', () => {
     const { fixture, facade } = renderDialog();
 
-    canvasOf(fixture).polygonMoved.emit({ polygonId: 'p1', position: { x: 0.4, y: 0.4 } });
+    canvasOf(fixture).polygonMoved.emit({ polygonId: POLYGON_ID, position: { x: 0.4, y: 0.4 } });
 
-    expect(facade.movePolygon).toHaveBeenCalledWith('p1', { x: 0.4, y: 0.4 });
+    expect(facade.movePolygon).toHaveBeenCalledWith(POLYGON_ID, { x: 0.4, y: 0.4 });
   });
 
   it('should rotate the polygon via the facade, when the canvas emits polygonRotated', () => {
     const { fixture, facade } = renderDialog();
 
-    canvasOf(fixture).polygonRotated.emit({ polygonId: 'p1', rotationRadians: Math.PI / 4 });
+    canvasOf(fixture).polygonRotated.emit({ polygonId: POLYGON_ID, rotationRadians: Math.PI / 4 });
 
-    expect(facade.rotatePolygon).toHaveBeenCalledWith('p1', Math.PI / 4);
+    expect(facade.rotatePolygon).toHaveBeenCalledWith(POLYGON_ID, Math.PI / 4);
   });
 
   it('should scale the polygon via the facade, when the canvas emits polygonScaled', () => {
     const { fixture, facade } = renderDialog();
 
-    canvasOf(fixture).polygonScaled.emit({ polygonId: 'p1', scale: 2 });
+    canvasOf(fixture).polygonScaled.emit({ polygonId: POLYGON_ID, scale: 2 });
 
-    expect(facade.scalePolygon).toHaveBeenCalledWith('p1', 2);
+    expect(facade.scalePolygon).toHaveBeenCalledWith(POLYGON_ID, 2);
   });
 
   it('should delete the polygon via the facade, when the canvas emits polygonDeleted', () => {
     const { fixture, facade } = renderDialog();
 
-    canvasOf(fixture).polygonDeleted.emit('p1');
+    canvasOf(fixture).polygonDeleted.emit(POLYGON_ID);
 
-    expect(facade.deletePolygon).toHaveBeenCalledWith('p1');
+    expect(facade.deletePolygon).toHaveBeenCalledWith(POLYGON_ID);
   });
 
   it('should select the polygon via the facade, when the canvas emits polygonSelected', () => {
     const { fixture, facade } = renderDialog();
 
-    canvasOf(fixture).polygonSelected.emit('p1');
+    canvasOf(fixture).polygonSelected.emit(POLYGON_ID);
 
-    expect(facade.selectPolygon).toHaveBeenCalledWith('p1');
+    expect(facade.selectPolygon).toHaveBeenCalledWith(POLYGON_ID);
   });
 
   it('should deselect the polygon via the facade, when the canvas emits polygonSelected with null', () => {

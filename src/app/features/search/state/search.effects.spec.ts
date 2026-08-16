@@ -44,14 +44,14 @@ describe('SearchEffects', () => {
     const page = {
       results: [
         {
-          id: '1',
-          title: 'One',
-          imageUrl: 'u',
-          thumbnailUrl: 't',
-          width: 1,
-          height: 1,
+          id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+          title: 'A cat',
+          imageUrl: 'https://images.example.org/full.jpg',
+          thumbnailUrl: 'https://images.example.org/thumb.jpg',
+          width: 1024,
+          height: 768,
           creator: null,
-          sourceUrl: 'f',
+          sourceUrl: 'https://images.example.org/source',
         },
       ],
       totalCount: 1,
@@ -173,15 +173,13 @@ describe('SearchEffects', () => {
     expect(cancelled, 'clearing the query should tear down the in-flight request').toBe(true);
   });
 
-  it('should re-issue the same query through retry, when a search has failed', () => {
-    store.setState({
-      search: { ...initialState, activeQuery: 'cats', status: 'error', error: 'unknown' },
-    });
+  it('should emit nothing, when retry$ runs with no active query', () => {
+    store.setState({ search: { ...initialState, status: 'error', activeQuery: null } });
+
     const results: unknown[] = [];
     effects.retry$.subscribe((action) => results.push(action));
-
     actions$.next(SearchActions.retryRequested());
 
-    expect(results).toEqual([SearchActions.searchRequested({ query: 'cats' })]);
+    expect(results).toEqual([]);
   });
 });

@@ -97,7 +97,7 @@ describe('httpErrorInterceptor', () => {
     vi.useRealTimers();
   });
 
-  it('should not retry a 404, and should preserve the original response as the cause', () => {
+  it('should fail immediately with the original response as cause, when the request returns a 404', () => {
     let captured: HttpFailure | undefined;
     http.get('/test').subscribe({ error: (error: HttpFailure) => (captured = error) });
 

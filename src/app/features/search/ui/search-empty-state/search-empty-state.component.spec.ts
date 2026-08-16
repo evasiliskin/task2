@@ -2,21 +2,25 @@ import { TestBed } from '@angular/core/testing';
 import { SearchEmptyState } from './search-empty-state.component';
 
 describe('SearchEmptyState', () => {
-  it('renders a message that includes the searched query', () => {
+  function renderWithQuery(query: string): HTMLElement {
     TestBed.configureTestingModule({ imports: [SearchEmptyState] });
     const fixture = TestBed.createComponent(SearchEmptyState);
-    fixture.componentRef.setInput('query', 'dinosaurs');
+    fixture.componentRef.setInput('query', query);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('dinosaurs');
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('should render a message naming the query, when a query is given', () => {
+    const element = renderWithQuery('dinosaurs');
+
+    expect(element.textContent).toContain('No results for “dinosaurs”');
+    expect(element.textContent).toContain('Try a different search.');
   });
 
-  it('should expose the empty message as a single derived string', () => {
-    TestBed.configureTestingModule({ imports: [SearchEmptyState] });
-    const fixture = TestBed.createComponent(SearchEmptyState);
-    fixture.componentRef.setInput('query', 'dinosaurs');
-    fixture.detectChanges();
+  it('should still render the message, when the query is empty', () => {
+    const element = renderWithQuery('');
 
-    expect(fixture.nativeElement.textContent).toContain('No results for “dinosaurs”');
+    expect(element.textContent).toContain('No results for “”');
   });
 });
