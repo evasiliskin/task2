@@ -6,13 +6,12 @@ import {
   withInterceptors,
 } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import {
-  httpErrorInterceptor,
-  MAX_RETRY_ATTEMPTS,
-  RETRY_BASE_DELAY_MS,
-} from './http-error.interceptor';
+import { appConfig } from '@core/config/app-config';
+import { httpErrorInterceptor } from './http-error.interceptor';
 import { HttpFailure } from './http-failure.model';
-import { REQUEST_TIMEOUT_MS, RequestTimeoutError } from './request-timeout.model';
+import { RequestTimeoutError } from './request-timeout.model';
+
+const httpConfig = appConfig.http;
 
 describe('httpErrorInterceptor', () => {
   let http: HttpClient;
@@ -37,7 +36,7 @@ describe('httpErrorInterceptor', () => {
 
     http.get('/test').subscribe({ error: (error: HttpFailure) => (captured = error) });
 
-    for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt <= httpConfig.maxRetryAttempts; attempt++) {
       httpMock
         .expectOne('/test')
         .flush('Internal error', { status: 500, statusText: 'Server Error' });
@@ -56,7 +55,7 @@ describe('httpErrorInterceptor', () => {
 
     http.get('/test').subscribe({ error: (error: HttpFailure) => (captured = error) });
 
-    for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt <= httpConfig.maxRetryAttempts; attempt++) {
       httpMock
         .expectOne('/test')
         .error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
@@ -87,7 +86,7 @@ describe('httpErrorInterceptor', () => {
     let captured: HttpFailure | undefined;
     http.get('/test').subscribe({ error: (error: HttpFailure) => (captured = error) });
 
-    for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt <= httpConfig.maxRetryAttempts; attempt++) {
       httpMock.expectOne('/test').flush('down', { status: 503, statusText: 'Unavailable' });
       await vi.advanceTimersByTimeAsync(5000);
     }
@@ -115,10 +114,10 @@ describe('httpErrorInterceptor', () => {
     let captured: unknown;
     http.get('/test').subscribe({ error: (error: unknown) => (captured = error) });
 
-    for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+    for (let attempt = 0; attempt <= httpConfig.maxRetryAttempts; attempt++) {
       httpMock.expectOne('/test');
-      await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
-      await vi.advanceTimersByTimeAsync(RETRY_BASE_DELAY_MS * 2 ** attempt);
+      await vi.advanceTimersByTimeAsync(httpConfig.requestTimeoutMs);
+      await vi.advanceTimersByTimeAsync(httpConfig.retryBaseDelayMs * 2 ** attempt);
     }
 
     expect(captured).toBeInstanceOf(RequestTimeoutError);

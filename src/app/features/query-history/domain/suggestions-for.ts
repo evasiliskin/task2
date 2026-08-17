@@ -1,12 +1,11 @@
+import { appConfig } from '@core/config/app-config';
 import { toCanonicalQuery } from '@shared/search-query';
 import { QueryHistoryEntry } from './query-history-entry.model';
-
-const DEFAULT_SUGGESTION_LIMIT = 5;
 
 export function suggestionsFor(
   input: string,
   history: readonly QueryHistoryEntry[],
-  limit: number = DEFAULT_SUGGESTION_LIMIT,
+  limit: number = appConfig.queryHistory.suggestionLimit,
 ): string[] {
   const canonicalInput = toCanonicalQuery(input);
   const byRecency = [...history].sort((a, b) => b.lastUsedAt - a.lastUsedAt);

@@ -1,15 +1,13 @@
-import {
-  KEYBOARD_NUDGE_STEP,
-  KEYBOARD_ROTATION_STEP_RADIANS,
-  KEYBOARD_SCALE_STEP,
-} from '../../interaction/polygon-interaction-controller';
+import { appConfig } from '@core/config/app-config';
 import { toPolygonCommand } from './polygon-keyboard-commands';
+
+const { nudgeStep, rotationStepRadians, scaleStep } = appConfig.imageEditor.keyboard;
 
 describe('toPolygonCommand', () => {
   it('should map ArrowUp to an upward move, when the arrow key is pressed', () => {
     expect(toPolygonCommand('ArrowUp')).toEqual({
       kind: 'move',
-      delta: { x: 0, y: -KEYBOARD_NUDGE_STEP },
+      delta: { x: 0, y: -nudgeStep },
       direction: 'up',
     });
   });
@@ -17,18 +15,18 @@ describe('toPolygonCommand', () => {
   it('should map ] to a clockwise rotation, when the bracket key is pressed', () => {
     expect(toPolygonCommand(']')).toEqual({
       kind: 'rotate',
-      deltaRadians: KEYBOARD_ROTATION_STEP_RADIANS,
+      deltaRadians: rotationStepRadians,
       direction: 'clockwise',
     });
   });
 
   it('should map both + and = to the same scale-up command, when either key is pressed', () => {
-    expect(toPolygonCommand('+')).toEqual({ kind: 'scale', factor: KEYBOARD_SCALE_STEP });
+    expect(toPolygonCommand('+')).toEqual({ kind: 'scale', factor: scaleStep });
     expect(toPolygonCommand('=')).toEqual(toPolygonCommand('+'));
   });
 
   it('should map - to a scale-down command, when the minus key is pressed', () => {
-    expect(toPolygonCommand('-')).toEqual({ kind: 'scale', factor: 1 / KEYBOARD_SCALE_STEP });
+    expect(toPolygonCommand('-')).toEqual({ kind: 'scale', factor: 1 / scaleStep });
   });
 
   it('should map both Delete and Backspace to a delete command, when either key is pressed', () => {

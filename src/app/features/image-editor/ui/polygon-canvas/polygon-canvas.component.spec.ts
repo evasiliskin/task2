@@ -207,6 +207,36 @@ describe('PolygonCanvas', () => {
     expect(img.alt).toBe('A test image');
   });
 
+  it('should caption the image figure with its alt text, when the canvas is rendered', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+
+    const figure: HTMLElement = fixture.nativeElement.querySelector('figure.polygon-canvas__stage');
+    expect(figure).toBeTruthy();
+    expect(figure.querySelector('figcaption')?.textContent).toContain('A test image');
+  });
+
+  it('should describe the canvas with its keyboard instructions, when the canvas is rendered', () => {
+    const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
+
+    const canvas: HTMLCanvasElement = fixture.nativeElement.querySelector('canvas');
+    const describedBy = canvas.getAttribute('aria-describedby');
+    const help = fixture.nativeElement.querySelector(`#${describedBy}`);
+
+    expect(help.textContent).toContain('arrow keys move it');
+    expect(help.textContent).toContain('Escape deselects it');
+  });
+
+  it('should name the polygon navigation buttons unambiguously, when polygons exist', () => {
+    const fixture = renderCanvas({ polygons: [squarePolygon(POLYGON_ID)], selectedPolygon: null });
+
+    const labels = [...fixture.nativeElement.querySelectorAll('button')].map((button: Element) =>
+      button.getAttribute('aria-label'),
+    );
+
+    expect(labels).toContain('Select the previous polygon');
+    expect(labels).toContain('Select the next polygon');
+  });
+
   it('should render intrinsic width and height attributes, when the image dimensions are known', () => {
     const fixture = renderCanvas({ polygons: [], selectedPolygon: null });
     fixture.componentRef.setInput('imageWidth', 1600);

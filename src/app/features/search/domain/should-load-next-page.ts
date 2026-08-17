@@ -1,5 +1,4 @@
-export const SEARCH_RESULT_ROW_HEIGHT_PX = 96;
-export const NEAR_END_PREFETCH_ROWS = 8;
+import { appConfig } from '@core/config/app-config';
 
 export interface NextPageTriggerState {
   readonly firstVisibleIndex: number;
@@ -12,7 +11,7 @@ export interface NextPageTriggerState {
 
 export function shouldLoadNextPage(
   state: NextPageTriggerState,
-  prefetchRows: number = NEAR_END_PREFETCH_ROWS,
+  prefetchRows: number = appConfig.search.results.nearEndPrefetchRows,
 ): boolean {
   if (!state.hasMoreResults || state.isLoadingMore || state.isLoadingMoreError) {
     return false;

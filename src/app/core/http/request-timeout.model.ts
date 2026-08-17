@@ -1,7 +1,7 @@
-export const REQUEST_TIMEOUT_MS = 15_000;
+import { appConfig } from '@core/config/app-config';
 
 export class RequestTimeoutError extends Error {
-  constructor(readonly timeoutMs: number = REQUEST_TIMEOUT_MS) {
+  constructor(readonly timeoutMs: number = appConfig.http.requestTimeoutMs) {
     super(`HTTP request timed out after ${timeoutMs}ms`);
     this.name = 'RequestTimeoutError';
   }

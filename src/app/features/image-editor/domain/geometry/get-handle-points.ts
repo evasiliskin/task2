@@ -1,3 +1,4 @@
+import { appConfig } from '@core/config/app-config';
 import { Polygon } from '../polygon.model';
 import { clampPixelPointIntoBox } from './clamp-pixel-point';
 import { CanvasBoxSize, PixelPoint } from './coordinate-mapping.model';
@@ -5,9 +6,7 @@ import { getBoundingBox } from './get-bounding-box';
 import { toPixelPoint } from './to-pixel-point';
 import { toWorldPoint } from './to-world-point';
 
-export const ROTATION_HANDLE_OFFSET_PX = 28;
-export const HANDLE_EDGE_INSET_PX = 6;
-const HANDLE_FLIP_TOLERANCE_PX = 0.5;
+const { rotationOffsetPx, edgeInsetPx, flipTolerancePx } = appConfig.imageEditor.handles;
 
 export function getRotationHandlePixel(polygon: Polygon, boxSize: CanvasBoxSize): PixelPoint {
   const boundingBox = getBoundingBox(polygon.points);
@@ -32,25 +31,25 @@ export function getRotationHandlePixel(polygon: Polygon, boxSize: CanvasBoxSize)
   );
 
   const preferred = {
-    x: topCentrePixel.x + up.x * ROTATION_HANDLE_OFFSET_PX,
-    y: topCentrePixel.y + up.y * ROTATION_HANDLE_OFFSET_PX,
+    x: topCentrePixel.x + up.x * rotationOffsetPx,
+    y: topCentrePixel.y + up.y * rotationOffsetPx,
   };
-  const clampedPreferred = clampPixelPointIntoBox(preferred, boxSize, HANDLE_EDGE_INSET_PX);
+  const clampedPreferred = clampPixelPointIntoBox(preferred, boxSize, edgeInsetPx);
 
   if (
-    Math.abs(clampedPreferred.x - preferred.x) <= HANDLE_FLIP_TOLERANCE_PX &&
-    Math.abs(clampedPreferred.y - preferred.y) <= HANDLE_FLIP_TOLERANCE_PX
+    Math.abs(clampedPreferred.x - preferred.x) <= flipTolerancePx &&
+    Math.abs(clampedPreferred.y - preferred.y) <= flipTolerancePx
   ) {
     return clampedPreferred;
   }
 
   return clampPixelPointIntoBox(
     {
-      x: bottomCentrePixel.x - up.x * ROTATION_HANDLE_OFFSET_PX,
-      y: bottomCentrePixel.y - up.y * ROTATION_HANDLE_OFFSET_PX,
+      x: bottomCentrePixel.x - up.x * rotationOffsetPx,
+      y: bottomCentrePixel.y - up.y * rotationOffsetPx,
     },
     boxSize,
-    HANDLE_EDGE_INSET_PX,
+    edgeInsetPx,
   );
 }
 

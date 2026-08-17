@@ -1,10 +1,11 @@
 import { createEntityAdapter, EntityState } from '@ngrx/entity';
 import { createFeature, createReducer, on } from '@ngrx/store';
+import { appConfig } from '@core/config/app-config';
 import { QueryHistoryEntry } from '../domain/query-history-entry.model';
 import { toQueryHistoryEntry } from '../domain/to-query-history-entry';
 import { QueryHistoryActions } from './query-history.actions';
 
-export const MAX_QUERY_HISTORY_ENTRIES = 50;
+const { maxEntries } = appConfig.queryHistory;
 
 export type QueryHistoryState = EntityState<QueryHistoryEntry>;
 
@@ -15,10 +16,10 @@ export const queryHistoryAdapter = createEntityAdapter<QueryHistoryEntry>({
 export const initialState: QueryHistoryState = queryHistoryAdapter.getInitialState();
 
 function evictLeastRecentlyUsed(state: QueryHistoryState): QueryHistoryState {
-  if (state.ids.length <= MAX_QUERY_HISTORY_ENTRIES) {
+  if (state.ids.length <= maxEntries) {
     return state;
   }
-  const surplus = state.ids.length - MAX_QUERY_HISTORY_ENTRIES;
+  const surplus = state.ids.length - maxEntries;
   const staleIds = [...state.ids]
     .map((id) => state.entities[String(id)])
     .filter((entry): entry is QueryHistoryEntry => entry !== undefined)

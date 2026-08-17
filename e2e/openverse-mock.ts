@@ -1,5 +1,7 @@
 import { Page, Route } from '@playwright/test';
-import { SEARCH_RESULTS_PAGE_SIZE } from '../src/app/core/api/openverse/openverse-api.config';
+import { APP_CONFIG_DEFAULTS } from '../src/app/core/config/app-config.defaults';
+
+const { pageSize } = APP_CONFIG_DEFAULTS.api.openverse;
 import type {
   OpenverseImageDto,
   OpenverseSearchResponseDto,
@@ -18,7 +20,7 @@ const STABLE_VALUE_MAX_ATTEMPTS = 20;
 
 export function buildMockPage(query: string, page: number): OpenverseSearchResponseDto {
   const results: OpenverseImageDto[] = Array.from(
-    { length: SEARCH_RESULTS_PAGE_SIZE },
+    { length: pageSize },
     (_unused, index) => {
       const id = `${query}-p${page}-i${index}`;
       return {
@@ -34,7 +36,7 @@ export function buildMockPage(query: string, page: number): OpenverseSearchRespo
     },
   );
   return {
-    result_count: MOCK_TOTAL_PAGES * SEARCH_RESULTS_PAGE_SIZE,
+    result_count: MOCK_TOTAL_PAGES * pageSize,
     page_count: MOCK_TOTAL_PAGES,
     results,
   };

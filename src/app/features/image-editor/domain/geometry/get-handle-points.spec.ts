@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  getRotationHandlePixel,
-  getScaleHandlePixels,
-  ROTATION_HANDLE_OFFSET_PX,
-} from './get-handle-points';
+import { appConfig } from '@core/config/app-config';
+import { getRotationHandlePixel, getScaleHandlePixels } from './get-handle-points';
+
+const { rotationOffsetPx } = appConfig.imageEditor.handles;
 import { Polygon } from '../polygon.model';
 
 const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
@@ -34,7 +33,7 @@ describe('getRotationHandlePixel', () => {
     const handle = getRotationHandlePixel(polygonAt(0.5), BOX);
 
     expect(handle.x).toBeCloseTo(200, 6);
-    expect(handle.y).toBeCloseTo(160 - ROTATION_HANDLE_OFFSET_PX, 6);
+    expect(handle.y).toBeCloseTo(160 - rotationOffsetPx, 6);
   });
 
   it('should stay inside the canvas, when the polygon is against the top edge', () => {
@@ -47,7 +46,7 @@ describe('getRotationHandlePixel', () => {
   it('should rotate with the shape, when the polygon is rotated a quarter turn', () => {
     const handle = getRotationHandlePixel(polygonAt(0.5, Math.PI / 2), BOX);
 
-    expect(handle.x).toBeCloseTo(200 + 40 + ROTATION_HANDLE_OFFSET_PX, 6);
+    expect(handle.x).toBeCloseTo(200 + 40 + rotationOffsetPx, 6);
     expect(handle.y).toBeCloseTo(200, 6);
   });
 

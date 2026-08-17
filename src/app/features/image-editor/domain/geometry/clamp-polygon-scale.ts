@@ -1,6 +1,7 @@
-export const MIN_POLYGON_SCALE = 0.1;
-export const MAX_POLYGON_SCALE = 5;
+import { appConfig } from '@core/config/app-config';
+
+const { minScale, maxScale } = appConfig.imageEditor.polygon;
 
 export function clampPolygonScale(scale: number): number {
-  return Math.min(MAX_POLYGON_SCALE, Math.max(MIN_POLYGON_SCALE, scale));
+  return Math.min(maxScale, Math.max(minScale, scale));
 }

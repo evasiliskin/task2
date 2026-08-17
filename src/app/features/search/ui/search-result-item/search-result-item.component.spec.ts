@@ -52,6 +52,22 @@ describe('SearchResultItem', () => {
     expect(image.getAttribute('loading')).toBe('lazy');
   });
 
+  it('should present the result as a captioned figure, when a result is given', () => {
+    const fixture = renderWithResult(fixtureData.result());
+
+    const figure: HTMLElement = fixture.nativeElement.querySelector('article figure');
+    expect(figure.querySelector('img')).toBeTruthy();
+    expect(figure.querySelector('figcaption')?.textContent).toContain('A mountain');
+  });
+
+  it('should name the open control after the result, when a result is given', () => {
+    const fixture = renderWithResult(fixtureData.result());
+
+    expect(fixture.nativeElement.querySelector('button').getAttribute('aria-label')).toBe(
+      'Open A mountain in the polygon editor',
+    );
+  });
+
   it('should emit selected, when the item button is clicked', () => {
     const fixture = renderWithResult(fixtureData.result());
 

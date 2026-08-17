@@ -1,10 +1,11 @@
 import { createEntityAdapter, EntityState } from '@ngrx/entity';
 import { createFeature, createReducer, createSelector, on } from '@ngrx/store';
+import { appConfig } from '@core/config/app-config';
 import { clampPolygonScale } from '../domain/geometry/clamp-polygon-scale';
 import { Polygon } from '../domain/polygon.model';
 import { ImageEditorActions } from './image-editor.actions';
 
-export const MAX_STORED_POLYGONS = 200;
+const { maxStoredPolygons } = appConfig.imageEditor;
 
 export interface ImageEditorState extends EntityState<Polygon> {
   readonly selectedPolygonId: string | null;
@@ -19,11 +20,11 @@ export const initialState: ImageEditorState = polygonAdapter.getInitialState({
 });
 
 function evictOldestPolygons(state: ImageEditorState): ImageEditorState {
-  if (state.ids.length <= MAX_STORED_POLYGONS) {
+  if (state.ids.length <= maxStoredPolygons) {
     return state;
   }
 
-  const surplus = state.ids.length - MAX_STORED_POLYGONS;
+  const surplus = state.ids.length - maxStoredPolygons;
   const evictedIds = [...state.ids]
     .map((id) => state.entities[String(id)])
     .filter((polygon): polygon is Polygon => polygon !== undefined)
@@ -73,9 +74,6 @@ export const imageEditorFeature = createFeature({
   ),
   extraSelectors: ({ selectImageEditorState, selectIds }) => ({
     ...polygonAdapter.getSelectors(selectImageEditorState),
-    selectIsAtPolygonCapacity: createSelector(
-      selectIds,
-      (ids) => ids.length >= MAX_STORED_POLYGONS,
-    ),
+    selectIsAtPolygonCapacity: createSelector(selectIds, (ids) => ids.length >= maxStoredPolygons),
   }),
 });

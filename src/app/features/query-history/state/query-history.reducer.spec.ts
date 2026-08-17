@@ -1,8 +1,7 @@
-import {
-  queryHistoryFeature,
-  initialState,
-  MAX_QUERY_HISTORY_ENTRIES,
-} from './query-history.reducer';
+import { appConfig } from '@core/config/app-config';
+import { queryHistoryFeature, initialState } from './query-history.reducer';
+
+const { maxEntries } = appConfig.queryHistory;
 import { QueryHistoryActions } from './query-history.actions';
 
 const { reducer } = queryHistoryFeature;
@@ -71,16 +70,16 @@ describe('query-history reducer', () => {
 
   it('should evict the least recently used entry, when the cap is exceeded', () => {
     let state = initialState;
-    for (let i = 0; i < MAX_QUERY_HISTORY_ENTRIES + 1; i++) {
+    for (let i = 0; i < maxEntries + 1; i++) {
       state = queryHistoryFeature.reducer(
         state,
         QueryHistoryActions.queryRecorded({ query: `query ${i}`, usedAt: i }),
       );
     }
 
-    expect(state.ids).toHaveLength(MAX_QUERY_HISTORY_ENTRIES);
+    expect(state.ids).toHaveLength(maxEntries);
     expect(state.entities['query 0']).toBeUndefined();
-    expect(state.entities[`query ${MAX_QUERY_HISTORY_ENTRIES}`]).toBeDefined();
+    expect(state.entities[`query ${maxEntries}`]).toBeDefined();
   });
 });
 

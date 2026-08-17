@@ -1,12 +1,11 @@
 import { NormalizedPoint } from '../domain/normalized-point.model';
 import { Polygon } from '../domain/polygon.model';
 import { CanvasBoxSize, PixelPoint } from '../domain/geometry/coordinate-mapping.model';
-import { MAX_POLYGON_SCALE } from '../domain/geometry/clamp-polygon-scale';
-import {
-  KEYBOARD_NUDGE_STEP,
-  KEYBOARD_ROTATION_STEP_RADIANS,
-  PolygonInteractionController,
-} from './polygon-interaction-controller';
+import { appConfig } from '@core/config/app-config';
+import { PolygonInteractionController } from './polygon-interaction-controller';
+
+const { nudgeStep, rotationStepRadians } = appConfig.imageEditor.keyboard;
+const { maxScale } = appConfig.imageEditor.polygon;
 
 const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
@@ -130,9 +129,9 @@ describe('PolygonInteractionController', () => {
 
       polygon = {
         ...polygon,
-        position: controller.nextPosition(polygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 }),
+        position: controller.nextPosition(polygon, { x: -nudgeStep, y: 0 }),
       };
-      const position = controller.nextPosition(polygon, { x: -KEYBOARD_NUDGE_STEP, y: 0 });
+      const position = controller.nextPosition(polygon, { x: -nudgeStep, y: 0 });
 
       expect(position.x).toBe(0);
     });
@@ -154,7 +153,7 @@ describe('PolygonInteractionController', () => {
       for (let i = 0; i < 40; i++) {
         polygon = {
           ...polygon,
-          rotationRadians: controller.nextRotation(polygon, KEYBOARD_ROTATION_STEP_RADIANS),
+          rotationRadians: controller.nextRotation(polygon, rotationStepRadians),
         };
       }
 
@@ -204,7 +203,7 @@ describe('PolygonInteractionController — scaling', () => {
 
     const scaled = controller.updateScale(session, { x: -5000, y: -5000 }, BOX);
 
-    expect(scaled.scale).toBe(MAX_POLYGON_SCALE);
+    expect(scaled.scale).toBe(maxScale);
   });
 
   it('should return the most recently created polygon, when two overlap under the pointer', () => {

@@ -152,6 +152,40 @@ describe('SearchShell view rendering', () => {
     expect(loading.textContent).toContain('Searching');
   });
 
+  it('should announce the loaded result count politely, when a search succeeded', () => {
+    const fixture = render({
+      status: 'success',
+      activeQuery: 'cats',
+      results: fixtureData.results(3),
+    });
+
+    const status = fixture.nativeElement.querySelector('p[role="status"]');
+    expect(status.getAttribute('aria-live')).toBe('polite');
+    expect(status.textContent).toContain('3 results loaded for cats.');
+  });
+
+  it('should announce that nothing was found, when a search succeeded with no results', () => {
+    const fixture = render({ status: 'success', activeQuery: 'dinosaurs', results: [] });
+
+    expect(fixture.nativeElement.querySelector('p[role="status"]').textContent).toContain(
+      'No results for dinosaurs.',
+    );
+  });
+
+  it('should label the results region by its heading, when results are shown', async () => {
+    vi.useFakeTimers();
+    const fixture = render({ status: 'success', results: [fixtureData.result()] });
+    await vi.advanceTimersByTimeAsync(16);
+    fixture.detectChanges();
+
+    const section = fixture.nativeElement.querySelector('section.search-shell__results');
+    const headingId = section.getAttribute('aria-labelledby');
+    expect(fixture.nativeElement.querySelector(`#${headingId}`).textContent).toContain(
+      'Search results',
+    );
+    vi.useRealTimers();
+  });
+
   it('should show the error state, when the search failed', () => {
     const fixture = render({ status: 'error', error: 'offline' });
 

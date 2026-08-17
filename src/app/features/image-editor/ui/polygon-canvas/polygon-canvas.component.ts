@@ -17,14 +17,13 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { fromEvent, merge } from 'rxjs';
 import { map, share, take, takeUntil } from 'rxjs/operators';
+import { APP_CONFIG } from '@core/config/app-config.token';
 import { PixelPoint } from '../../domain/geometry/coordinate-mapping.model';
-import { MIN_POLYGON_POINTS } from '../../domain/geometry/create-polygon-from-points';
 import { toNormalizedPoint } from '../../domain/geometry/to-normalized-point';
 import { NormalizedPoint } from '../../domain/normalized-point.model';
 import { Polygon } from '../../domain/polygon.model';
 import {
   DragSession,
-  KEYBOARD_ROTATION_STEP_RADIANS,
   RotateSession,
   ScaleSession,
 } from '../../interaction/polygon-interaction-controller';
@@ -39,8 +38,9 @@ type ActiveGesture =
   | { readonly kind: 'rotate'; readonly session: RotateSession }
   | { readonly kind: 'scale'; readonly session: ScaleSession };
 
-const KEYBOARD_ROTATION_STEP_DEGREES = Math.round((KEYBOARD_ROTATION_STEP_RADIANS * 180) / Math.PI);
 const EMPTY_DRAW_POINTS: readonly NormalizedPoint[] = [];
+
+let nextInstanceId = 0;
 
 @Component({
   selector: 'app-polygon-canvas',
@@ -65,7 +65,12 @@ export class PolygonCanvas {
   readonly polygonDeleted = output<string>();
   readonly polygonSelected = output<string | null>();
 
-  protected readonly minPoints = MIN_POLYGON_POINTS;
+  private readonly config = inject(APP_CONFIG).imageEditor;
+  protected readonly minPoints = this.config.polygon.minPoints;
+  protected readonly helpId = `polygon-canvas-help-${nextInstanceId++}`;
+  protected readonly rotationStepDegrees = Math.round(
+    (this.config.keyboard.rotationStepRadians * 180) / Math.PI,
+  );
   protected readonly mode = signal<'idle' | 'drawing'>('idle');
   protected readonly canDraw = computed(() => this.imageStatus() === 'loaded');
   protected readonly selectedIndex = computed(() => {
@@ -381,7 +386,8 @@ export class PolygonCanvas {
   }
 
   private commitRotate(polygon: Polygon, deltaRadians: number, direction: string): void {
-    this.announce(`Polygon rotated ${KEYBOARD_ROTATION_STEP_DEGREES}° ${direction}.`);
+    const stepDegrees = Math.round((Math.abs(deltaRadians) * 180) / Math.PI);
+    this.announce(`Polygon rotated ${stepDegrees}° ${direction}.`);
     this.polygonRotated.emit({
       polygonId: polygon.id,
       rotationRadians: this.controller.nextRotation(polygon, deltaRadians),
@@ -400,7 +406,7 @@ export class PolygonCanvas {
 
   private commitDraw(): void {
     const points = this.drawPoints();
-    if (points.length < MIN_POLYGON_POINTS) {
+    if (points.length < this.minPoints) {
       return;
     }
     this.polygonDrawn.emit(points);

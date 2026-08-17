@@ -1,11 +1,10 @@
-import { InjectionToken } from '@angular/core';
+import { InjectionToken, inject } from '@angular/core';
+import { APP_CONFIG } from '@core/config/app-config.token';
+import { OpenverseApiConfig } from '@core/config/app-config.schema';
 
-export interface OpenverseApiConfig {
-  readonly baseUrl: string;
-}
+export type { OpenverseApiConfig };
 
 export const OPENVERSE_API_CONFIG = new InjectionToken<OpenverseApiConfig>('OPENVERSE_API_CONFIG', {
-  factory: () => ({ baseUrl: 'https://api.openverse.org/v1' }),
+  providedIn: 'root',
+  factory: () => inject(APP_CONFIG).api.openverse,
 });
-
-export const SEARCH_RESULTS_PAGE_SIZE = 20;

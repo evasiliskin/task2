@@ -1,11 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { CLOCK } from '@core/time/clock.token';
 import { MappedSearchPage } from './search-result.mapper';
-import {
-  CACHE_TTL_MS,
-  MAX_CACHE_ENTRIES,
-  SearchResultsCache,
-} from './search-results-cache.service';
+import { appConfig } from '@core/config/app-config';
+import { SearchResultsCache } from './search-results-cache.service';
+
+const { ttlMs, maxEntries } = appConfig.search.cache;
 
 describe('SearchResultsCache', () => {
   let now: number;
@@ -79,7 +78,7 @@ describe('SearchResultsCache', () => {
 
   it('should evict the least recently read entry, when the cache exceeds its capacity', () => {
     const cache = createCache();
-    for (let index = 0; index < MAX_CACHE_ENTRIES; index++) {
+    for (let index = 0; index < maxEntries; index++) {
       cache.set(`query ${index}`, 1, aPage());
     }
 
@@ -96,7 +95,7 @@ describe('SearchResultsCache', () => {
     const page = aPage();
     cache.set('cats', 1, page);
 
-    now = CACHE_TTL_MS - 1;
+    now = ttlMs - 1;
 
     expect(cache.get('cats', 1)).toBe(page);
   });
@@ -105,7 +104,7 @@ describe('SearchResultsCache', () => {
     const cache = createCache();
     cache.set('cats', 1, aPage());
 
-    now = CACHE_TTL_MS;
+    now = ttlMs;
 
     expect(cache.get('cats', 1)).toBeUndefined();
   });
