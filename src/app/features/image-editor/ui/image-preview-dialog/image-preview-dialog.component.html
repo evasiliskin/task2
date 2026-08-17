@@ -1,0 +1,15 @@
+<app-polygon-canvas
+  [imageUrl]="target.imageUrl"
+  [imageAlt]="target.title"
+  [imageWidth]="target.width"
+  [imageHeight]="target.height"
+  [polygons]="polygons()"
+  [selectedPolygon]="selectedPolygon()"
+  [isAtCapacity]="isAtCapacity()"
+  (polygonDrawn)="onPolygonDrawn($event)"
+  (polygonMoved)="onPolygonMoved($event)"
+  (polygonRotated)="onPolygonRotated($event)"
+  (polygonScaled)="onPolygonScaled($event)"
+  (polygonDeleted)="onPolygonDeleted($event)"
+  (polygonSelected)="onPolygonSelected($event)"
+/>

@@ -1,0 +1,43 @@
+<section class="search-shell" aria-label="Image search">
+  <app-search-input
+    [query]="queryText()"
+    [suggestions]="suggestions()"
+    (queryChange)="onQueryChange($event)"
+    (suggestionSelected)="onSuggestionSelected($event)"
+  />
+
+  @if (dialogFailed()) {
+    <div class="search-shell__dialog-error" role="alert">
+      <nz-alert
+        nzType="error"
+        nzShowIcon
+        nzMessage="Could not open the image preview. Please try again."
+      />
+    </div>
+  }
+
+  @let vm = viewModel();
+
+  @if (vm.status === 'idle') {
+    <p class="search-shell__idle">Start typing to search millions of openly-licensed images.</p>
+  } @else if (vm.status === 'loading') {
+    <div class="search-shell__loading" role="status" aria-live="polite">
+      <nz-spin nzSimple />
+      <span>Searching…</span>
+    </div>
+  } @else if (vm.status === 'error') {
+    <app-search-error-state [errorKind]="vm.error" (retry)="onRetry()" />
+  } @else if (vm.status === 'success' && vm.results.length === 0) {
+    <app-search-empty-state [query]="vm.activeQuery ?? ''" />
+  } @else if (vm.results.length > 0) {
+    <h2 class="visually-hidden">Search results</h2>
+    <app-search-results-list
+      [results]="vm.results"
+      [isLoadingMore]="vm.isLoadingMore"
+      [isLoadingMoreError]="vm.isLoadingMoreError"
+      (scrolled)="onScrolled($event)"
+      (retry)="onRetry()"
+      (resultSelected)="onResultSelected($event)"
+    />
+  }
+</section>

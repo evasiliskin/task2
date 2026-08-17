@@ -1,0 +1,102 @@
+<div class="polygon-canvas">
+  <div class="polygon-canvas__stage">
+    <img
+      #imageEl
+      class="polygon-canvas__image"
+      [src]="imageUrl()"
+      [alt]="imageAlt()"
+      [attr.width]="imageWidth() || null"
+      [attr.height]="imageHeight() || null"
+      (load)="onImageLoad()"
+      (error)="onImageError()"
+    />
+    <canvas
+      #canvasEl
+      class="polygon-canvas__overlay"
+      [class.polygon-canvas__overlay--drawing]="mode() === 'drawing'"
+      [attr.tabindex]="0"
+      role="application"
+      [attr.aria-label]="canvasAriaLabel()"
+      (pointerdown)="onPointerDown($event)"
+      (dblclick)="onCanvasDoubleClick()"
+      (keydown)="onKeyDown($event)"
+    ></canvas>
+  </div>
+
+  @if (imageStatus() === 'loading') {
+    <p class="polygon-canvas__image-status" role="status" aria-live="polite">Loading image…</p>
+  } @else if (imageStatus() === 'error') {
+    <p class="polygon-canvas__image-status polygon-canvas__image-status--error" role="alert">
+      The image could not be loaded, so polygons cannot be drawn on it.
+    </p>
+  }
+
+  @if (canvasUnavailable()) {
+    <p class="polygon-canvas__unavailable" role="alert">
+      Polygon drawing is unavailable — this browser did not provide a 2D canvas context.
+    </p>
+  }
+
+  <div class="polygon-canvas__toolbar">
+    @if (mode() === 'drawing') {
+      <span class="polygon-canvas__draw-hint" role="status" aria-live="polite">
+        @if (drawPoints().length === 0) {
+          Click the image to place the first point.
+        } @else {
+          {{ drawPoints().length }} point(s) placed — add at least {{ minPoints }} to finish.
+        }
+      </span>
+      <button
+        type="button"
+        nz-button
+        nzSize="small"
+        nzType="primary"
+        [disabled]="drawPoints().length < minPoints"
+        (click)="onFinishDraw()"
+      >
+        Finish polygon
+      </button>
+      <button type="button" nz-button nzSize="small" (click)="onCancelDraw()">Cancel</button>
+    } @else {
+      <button
+        type="button"
+        nz-button
+        nzSize="small"
+        nzType="primary"
+        [disabled]="!canDraw()"
+        (click)="onStartDraw()"
+      >
+        Draw polygon
+      </button>
+      @if (isAtCapacity()) {
+        <span class="polygon-canvas__draw-hint">
+          Polygon limit reached — drawing another removes the oldest one.
+        </span>
+      }
+      @if (polygons().length > 0) {
+        <span class="polygon-canvas__draw-hint">
+          @if (selectedIndex() >= 0) {
+            Polygon {{ selectedIndex() + 1 }} of {{ polygons().length }}
+          } @else {
+            {{ polygons().length }} polygon(s) — select one to edit
+          }
+        </span>
+        <button type="button" nz-button nzSize="small" (click)="onSelectPrevious()">
+          Previous
+        </button>
+        <button type="button" nz-button nzSize="small" (click)="onSelectNext()">Next</button>
+        @if (selectedPolygon(); as selected) {
+          <button
+            type="button"
+            nz-button
+            nzSize="small"
+            nzDanger
+            (click)="onDeletePolygon(selected.id)"
+          >
+            Delete polygon
+          </button>
+        }
+      }
+    }
+  </div>
+</div>

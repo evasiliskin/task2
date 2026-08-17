@@ -1,0 +1,58 @@
+<div class="search-input">
+  <label [attr.for]="inputId" class="search-input__label">Search images</label>
+  <div class="search-input__field">
+    <input
+      [id]="inputId"
+      nz-input
+      type="search"
+      name="searchQuery"
+      role="combobox"
+      autocomplete="off"
+      aria-autocomplete="list"
+      aria-haspopup="listbox"
+      [attr.aria-controls]="listboxId"
+      [attr.aria-expanded]="isOpen()"
+      [attr.aria-activedescendant]="activeOptionId()"
+      placeholder='Try "mountains" or "cats"'
+      [value]="query()"
+      (input)="onInput($event)"
+      (focus)="onFocus()"
+      (blur)="onBlur()"
+      (keydown)="onKeyDown($event)"
+    />
+    @if (query().length > 0) {
+      <button
+        type="button"
+        nz-button
+        nzType="text"
+        nzSize="small"
+        class="search-input__clear"
+        (click)="onClear()"
+      >
+        Clear search
+      </button>
+    }
+    <ul
+      class="search-input__listbox"
+      role="listbox"
+      aria-label="Past searches"
+      [id]="listboxId"
+      [hidden]="!isOpen()"
+      (mousedown)="$event.preventDefault()"
+    >
+      @for (suggestion of suggestions(); track suggestion; let index = $index) {
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+        <li
+          class="search-input__option"
+          role="option"
+          [id]="optionIdPrefix + '-' + index"
+          [class.search-input__option--active]="index === activeIndex()"
+          [attr.aria-selected]="index === activeIndex()"
+          (click)="select(suggestion)"
+        >
+          {{ suggestion }}
+        </li>
+      }
+    </ul>
+  </div>
+</div>

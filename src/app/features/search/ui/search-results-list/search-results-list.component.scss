@@ -1,0 +1,41 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.search-results-list__viewport {
+  flex: 1 1 auto;
+  min-height: 320px;
+}
+
+.search-results-list__item {
+  height: var(--search-result-row-height);
+  box-sizing: border-box;
+}
+
+.search-results-list__loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--app-color-text-secondary);
+}
+
+.search-results-list__load-more-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+}
