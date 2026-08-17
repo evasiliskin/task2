@@ -12,6 +12,9 @@ must respect while changing it.
 - Fetch current docs before relying on API details for Angular, NgRx, NG-ZORRO, RxJS, Vitest or
   Playwright — this project runs Angular 22 and pre-release NgRx `22.0.0-rc.0`, where training
   data is often wrong.
+- Use context7 to fetch current documentation for these libraries and any other library, framework,
+  SDK, API, CLI tool or cloud service in question — prefer it over relying on training data or web
+  search for library docs.
 - `docs/` and `.ai/` are gitignored working directories (plans and reusable engineering
   guidance), not part of the delivered project. Do not treat them as repository documentation or
   move them into it.
