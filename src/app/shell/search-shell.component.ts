@@ -50,6 +50,18 @@ export class SearchShell {
     suggestionsFor(this.queryText(), this.queryHistoryFacade.entries()),
   );
 
+  protected readonly searchAnnouncement = computed(() => {
+    const viewModel = this.viewModel();
+    if (viewModel.status !== 'success' || viewModel.activeQuery === null) {
+      return '';
+    }
+    if (viewModel.results.length === 0) {
+      return `No results for ${viewModel.activeQuery}.`;
+    }
+    const noun = viewModel.results.length === 1 ? 'result' : 'results';
+    return `${viewModel.results.length} ${noun} loaded for ${viewModel.activeQuery}.`;
+  });
+
   private readonly activeQuery = computed(() => this.viewModel().activeQuery);
 
   private readonly lastVisibleRange = linkedSignal<string | null, VisibleRange | null>({

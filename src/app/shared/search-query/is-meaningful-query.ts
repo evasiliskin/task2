@@ -1,7 +1,10 @@
-export const MIN_MEANINGFUL_QUERY_LENGTH = 2;
+import { appConfig } from '@core/config/app-config';
 
-export function isMeaningfulQuery(normalizedQuery: string): boolean {
-  if (normalizedQuery.length >= MIN_MEANINGFUL_QUERY_LENGTH) {
+export function isMeaningfulQuery(
+  normalizedQuery: string,
+  minLength: number = appConfig.search.minQueryLength,
+): boolean {
+  if (normalizedQuery.length >= minLength) {
     return true;
   }
   const codePoint = normalizedQuery.codePointAt(0);

@@ -1,10 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { provideState, provideStore } from '@ngrx/store';
 import { CLOCK } from '@core/time/clock.token';
-import { MAX_POLYGON_SCALE } from './domain/geometry/clamp-polygon-scale';
+import { appConfig } from '@core/config/app-config';
 import { POLYGON_ID } from './domain/polygon-id.token';
 import { ImageEditorFacade } from './image-editor.facade';
-import { imageEditorFeature, MAX_STORED_POLYGONS } from './state/image-editor.reducer';
+import { imageEditorFeature } from './state/image-editor.reducer';
+
+const { maxStoredPolygons } = appConfig.imageEditor;
+const { maxScale } = appConfig.imageEditor.polygon;
 
 const FIRST_IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 const SECOND_IMAGE_ID = 'b6a1d4e2-9f3c-4a7b-8d21-5c7e0f9a1b34';
@@ -119,9 +122,9 @@ describe('ImageEditorFacade', () => {
     const facade = configure();
     facade.createPolygon(TRIANGLE, FIRST_IMAGE_ID);
 
-    facade.scalePolygon(FIRST_POLYGON_ID, MAX_POLYGON_SCALE + 10);
+    facade.scalePolygon(FIRST_POLYGON_ID, maxScale + 10);
 
-    expect(facade.polygonsFor(FIRST_IMAGE_ID)()[0].scale).toBe(MAX_POLYGON_SCALE);
+    expect(facade.polygonsFor(FIRST_IMAGE_ID)()[0].scale).toBe(maxScale);
   });
 
   it('should remove the polygon, when it is deleted through the facade', () => {
@@ -144,7 +147,7 @@ describe('ImageEditorFacade', () => {
 
   it('should report at capacity, when the polygon count reaches the storage limit', () => {
     const ids = Array.from(
-      { length: MAX_STORED_POLYGONS },
+      { length: maxStoredPolygons },
       (_unused, index) => `${FIRST_POLYGON_ID.slice(0, -3)}${(index + 100).toString(16)}`,
     );
     const facade = configure(ids);

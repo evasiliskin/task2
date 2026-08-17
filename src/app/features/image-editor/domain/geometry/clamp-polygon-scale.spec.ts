@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { clampPolygonScale, MAX_POLYGON_SCALE, MIN_POLYGON_SCALE } from './clamp-polygon-scale';
+import { appConfig } from '@core/config/app-config';
+import { clampPolygonScale } from './clamp-polygon-scale';
+
+const { minScale, maxScale } = appConfig.imageEditor.polygon;
 
 describe('clampPolygonScale', () => {
   it('should return the scale unchanged, when it is inside the bounds', () => {
@@ -7,10 +10,10 @@ describe('clampPolygonScale', () => {
   });
 
   it('should clamp to the minimum, when the scale is below the lower bound', () => {
-    expect(clampPolygonScale(0.001)).toBe(MIN_POLYGON_SCALE);
+    expect(clampPolygonScale(0.001)).toBe(minScale);
   });
 
   it('should clamp to the maximum, when the scale is above the upper bound', () => {
-    expect(clampPolygonScale(50)).toBe(MAX_POLYGON_SCALE);
+    expect(clampPolygonScale(50)).toBe(maxScale);
   });
 });

@@ -1,3 +1,4 @@
+import { appConfig } from '@core/config/app-config';
 import { NormalizedPoint } from '../domain/normalized-point.model';
 import { Polygon } from '../domain/polygon.model';
 import { CanvasBoxSize, PixelPoint } from '../domain/geometry/coordinate-mapping.model';
@@ -11,12 +12,8 @@ import { addPoints } from '../domain/geometry/point-math';
 import { toNormalizedPoint } from '../domain/geometry/to-normalized-point';
 import { toPixelPoint } from '../domain/geometry/to-pixel-point';
 
-export const ROTATION_HANDLE_HIT_RADIUS_PX = 12;
-export const SCALE_HANDLE_HIT_RADIUS_PX = 10;
-export const DRAW_CLOSE_HIT_RADIUS_PX = 10;
-export const KEYBOARD_NUDGE_STEP = 0.02;
-export const KEYBOARD_ROTATION_STEP_RADIANS = Math.PI / 12;
-export const KEYBOARD_SCALE_STEP = 1.1;
+const { rotationHitRadiusPx, scaleHitRadiusPx, drawCloseHitRadiusPx } =
+  appConfig.imageEditor.handles;
 
 export interface DragSession {
   readonly polygon: Polygon;
@@ -58,7 +55,7 @@ export class PolygonInteractionController {
     polygon: Polygon,
     pixelPointer: PixelPoint,
     boxSize: CanvasBoxSize,
-    hitRadiusPx: number = ROTATION_HANDLE_HIT_RADIUS_PX,
+    hitRadiusPx: number = rotationHitRadiusPx,
   ): boolean {
     return pixelDistance(pixelPointer, getRotationHandlePixel(polygon, boxSize)) <= hitRadiusPx;
   }
@@ -67,7 +64,7 @@ export class PolygonInteractionController {
     polygon: Polygon,
     pixelPointer: PixelPoint,
     boxSize: CanvasBoxSize,
-    hitRadiusPx: number = SCALE_HANDLE_HIT_RADIUS_PX,
+    hitRadiusPx: number = scaleHitRadiusPx,
   ): number | null {
     const index = getScaleHandlePixels(polygon, boxSize).findIndex(
       (corner) => pixelDistance(pixelPointer, corner) <= hitRadiusPx,
@@ -119,7 +116,7 @@ export class PolygonInteractionController {
     drawPoints: readonly NormalizedPoint[],
     pixelPointer: PixelPoint,
     boxSize: CanvasBoxSize,
-    hitRadiusPx: number = DRAW_CLOSE_HIT_RADIUS_PX,
+    hitRadiusPx: number = drawCloseHitRadiusPx,
   ): boolean {
     if (drawPoints.length === 0) {
       return false;

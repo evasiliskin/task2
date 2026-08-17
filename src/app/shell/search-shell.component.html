@@ -6,6 +6,8 @@
     (suggestionSelected)="onSuggestionSelected($event)"
   />
 
+  <p class="visually-hidden" role="status" aria-live="polite">{{ searchAnnouncement() }}</p>
+
   @if (dialogFailed()) {
     <div class="search-shell__dialog-error" role="alert">
       <nz-alert
@@ -30,14 +32,16 @@
   } @else if (vm.status === 'success' && vm.results.length === 0) {
     <app-search-empty-state [query]="vm.activeQuery ?? ''" />
   } @else if (vm.results.length > 0) {
-    <h2 class="visually-hidden">Search results</h2>
-    <app-search-results-list
-      [results]="vm.results"
-      [isLoadingMore]="vm.isLoadingMore"
-      [isLoadingMoreError]="vm.isLoadingMoreError"
-      (scrolled)="onScrolled($event)"
-      (retry)="onRetry()"
-      (resultSelected)="onResultSelected($event)"
-    />
+    <section class="search-shell__results" aria-labelledby="search-results-heading">
+      <h2 id="search-results-heading" class="visually-hidden">Search results</h2>
+      <app-search-results-list
+        [results]="vm.results"
+        [isLoadingMore]="vm.isLoadingMore"
+        [isLoadingMoreError]="vm.isLoadingMoreError"
+        (scrolled)="onScrolled($event)"
+        (retry)="onRetry()"
+        (resultSelected)="onResultSelected($event)"
+      />
+    </section>
   }
 </section>

@@ -1,7 +1,9 @@
-import { imageEditorFeature, initialState, MAX_STORED_POLYGONS } from './image-editor.reducer';
+import { appConfig } from '@core/config/app-config';
+import { imageEditorFeature, initialState } from './image-editor.reducer';
 import { ImageEditorActions } from './image-editor.actions';
 import { Polygon } from '../domain/polygon.model';
-import { MAX_POLYGON_SCALE } from '../domain/geometry/clamp-polygon-scale';
+const { maxStoredPolygons } = appConfig.imageEditor;
+const { maxScale } = appConfig.imageEditor.polygon;
 
 const IMAGE_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 const POLYGON_ID = '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
@@ -158,7 +160,7 @@ describe('image-editor reducer', () => {
   });
 
   it('should evict the oldest polygon, when the cap is exceeded', () => {
-    const state = Array.from({ length: MAX_STORED_POLYGONS + 1 }, (_unused, index) => index).reduce(
+    const state = Array.from({ length: maxStoredPolygons + 1 }, (_unused, index) => index).reduce(
       (accumulated, index) =>
         imageEditorFeature.reducer(
           accumulated,
@@ -181,9 +183,9 @@ describe('image-editor reducer', () => {
       initialState,
     );
 
-    expect(state.ids).toHaveLength(MAX_STORED_POLYGONS);
+    expect(state.ids).toHaveLength(maxStoredPolygons);
     expect(state.entities[MISSING_POLYGON_ID]).toBeUndefined();
-    expect(state.entities[`p${MAX_STORED_POLYGONS}`]).toBeDefined();
+    expect(state.entities[`p${maxStoredPolygons}`]).toBeDefined();
   });
 
   it('should evict the oldest polygon by createdAt, when the store exceeds capacity', () => {
@@ -202,7 +204,7 @@ describe('image-editor reducer', () => {
     });
 
     let state = initialState;
-    for (let index = 0; index < MAX_STORED_POLYGONS; index++) {
+    for (let index = 0; index < maxStoredPolygons; index++) {
       state = reducer(
         state,
         ImageEditorActions.polygonCreated({ polygon: polygonAt(`p${index}`, 1_000 - index) }),
@@ -213,8 +215,8 @@ describe('image-editor reducer', () => {
       ImageEditorActions.polygonCreated({ polygon: polygonAt('newest', 5_000) }),
     );
 
-    expect(state.ids).toHaveLength(MAX_STORED_POLYGONS);
-    expect(state.entities[`p${MAX_STORED_POLYGONS - 1}`]).toBeUndefined();
+    expect(state.ids).toHaveLength(maxStoredPolygons);
+    expect(state.entities[`p${maxStoredPolygons - 1}`]).toBeUndefined();
     expect(state.entities['newest']).toBeDefined();
   });
 });
@@ -301,11 +303,11 @@ describe('image editor reducer — multiple polygons', () => {
       ImageEditorActions.polygonScaled({ polygonId: POLYGON_ID, scale: 999 }),
     );
 
-    expect(state.entities[POLYGON_ID]?.scale).toBe(MAX_POLYGON_SCALE);
+    expect(state.entities[POLYGON_ID]?.scale).toBe(maxScale);
   });
 
   it('should clear the selection, when the selected polygon is evicted by the cap', () => {
-    const atCap = Array.from({ length: MAX_STORED_POLYGONS }, (_unused, index) =>
+    const atCap = Array.from({ length: maxStoredPolygons }, (_unused, index) =>
       polygonFixture(`p${index}`, IMAGE_ID),
     ).reduce(
       (state, polygon) =>
@@ -323,12 +325,12 @@ describe('image editor reducer — multiple polygons', () => {
     );
 
     expect(state.entities[MISSING_POLYGON_ID]).toBeUndefined();
-    expect(state.ids).toHaveLength(MAX_STORED_POLYGONS);
+    expect(state.ids).toHaveLength(maxStoredPolygons);
     expect(state.selectedPolygonId).toBe('overflow');
   });
 
   it('should keep the surviving selection, when a different polygon is evicted by the cap', () => {
-    const atCap = Array.from({ length: MAX_STORED_POLYGONS }, (_unused, index) =>
+    const atCap = Array.from({ length: maxStoredPolygons }, (_unused, index) =>
       polygonFixture(`p${index}`, IMAGE_ID),
     ).reduce(
       (state, polygon) =>

@@ -1,9 +1,10 @@
+import { appConfig } from '@core/config/app-config';
 import { NormalizedPoint } from '../normalized-point.model';
 import { Polygon } from '../polygon.model';
 import { computeCentroid } from './compute-centroid';
 import { subtractPoints } from './point-math';
 
-export const MIN_POLYGON_POINTS = 3;
+const { minPoints } = appConfig.imageEditor.polygon;
 
 export function createPolygonFromPoints(
   rawPoints: readonly NormalizedPoint[],
@@ -11,8 +12,8 @@ export function createPolygonFromPoints(
   id: string,
   createdAt: number,
 ): Polygon {
-  if (rawPoints.length < MIN_POLYGON_POINTS) {
-    throw new Error(`createPolygonFromPoints requires at least ${MIN_POLYGON_POINTS} points`);
+  if (rawPoints.length < minPoints) {
+    throw new Error(`createPolygonFromPoints requires at least ${minPoints} points`);
   }
 
   const centroid = computeCentroid(rawPoints);

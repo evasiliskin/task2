@@ -4,7 +4,9 @@ import { provideMockStore, MockStore } from '@ngrx/store/testing';
 import { SearchActions, SearchPageActions } from './state/search.actions';
 import { initialState, searchFeature } from './state/search.reducer';
 import { SearchFacade } from './search.facade';
-import { SEARCH_DEBOUNCE_MS } from './domain/search-debounce';
+import { appConfig } from '@core/config/app-config';
+
+const { debounceMs } = appConfig.search;
 
 describe('SearchFacade', () => {
   let store: MockStore;
@@ -29,7 +31,7 @@ describe('SearchFacade', () => {
     facade.queryChanged('c');
     facade.queryChanged('ca');
     facade.queryChanged('cat');
-    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    vi.advanceTimersByTime(debounceMs);
 
     expect(store.dispatch).toHaveBeenCalledTimes(1);
     expect(store.dispatch).toHaveBeenCalledWith(SearchActions.searchRequested({ query: 'cat' }));
@@ -37,23 +39,23 @@ describe('SearchFacade', () => {
 
   it('should dispatch queryCleared, when the debounced query is not meaningful', () => {
     facade.queryChanged('c');
-    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    vi.advanceTimersByTime(debounceMs);
 
     expect(store.dispatch).toHaveBeenCalledWith(SearchActions.queryCleared());
   });
 
   it('should dispatch nothing, when the debounce window has not elapsed', () => {
     facade.queryChanged('cat');
-    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS - 1);
+    vi.advanceTimersByTime(debounceMs - 1);
 
     expect(store.dispatch).not.toHaveBeenCalled();
   });
 
   it('should dispatch one search, when the query changes only by casing', () => {
     facade.queryChanged('cats');
-    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    vi.advanceTimersByTime(debounceMs);
     facade.queryChanged('Cats');
-    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    vi.advanceTimersByTime(debounceMs);
 
     expect(store.dispatch).toHaveBeenCalledTimes(1);
     expect(store.dispatch).toHaveBeenCalledWith(SearchActions.searchRequested({ query: 'cats' }));
@@ -70,7 +72,7 @@ describe('SearchFacade', () => {
   it('should not dispatch a second search, when the input echoes a submitted query', () => {
     facade.querySubmitted('mountains');
     facade.queryChanged('mountains');
-    vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS);
+    vi.advanceTimersByTime(debounceMs);
 
     expect(store.dispatch).toHaveBeenCalledTimes(1);
   });

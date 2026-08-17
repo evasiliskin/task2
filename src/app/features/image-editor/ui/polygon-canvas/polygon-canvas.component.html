@@ -1,5 +1,5 @@
 <div class="polygon-canvas">
-  <div class="polygon-canvas__stage">
+  <figure class="polygon-canvas__stage">
     <img
       #imageEl
       class="polygon-canvas__image"
@@ -17,11 +17,19 @@
       [attr.tabindex]="0"
       role="application"
       [attr.aria-label]="canvasAriaLabel()"
+      [attr.aria-describedby]="helpId"
       (pointerdown)="onPointerDown($event)"
       (dblclick)="onCanvasDoubleClick()"
       (keydown)="onKeyDown($event)"
     ></canvas>
-  </div>
+    <figcaption class="visually-hidden">{{ imageAlt() }}</figcaption>
+  </figure>
+
+  <p [id]="helpId" class="visually-hidden">
+    Click the image to place polygon points, then finish the polygon. With a polygon selected, the
+    arrow keys move it, [ and ] rotate it by {{ rotationStepDegrees }} degrees, + and - scale it,
+    Delete removes it and Escape deselects it.
+  </p>
 
   @if (imageStatus() === 'loading') {
     <p class="polygon-canvas__image-status" role="status" aria-live="polite">Loading image…</p>
@@ -81,10 +89,24 @@
             {{ polygons().length }} polygon(s) — select one to edit
           }
         </span>
-        <button type="button" nz-button nzSize="small" (click)="onSelectPrevious()">
+        <button
+          type="button"
+          nz-button
+          nzSize="small"
+          aria-label="Select the previous polygon"
+          (click)="onSelectPrevious()"
+        >
           Previous
         </button>
-        <button type="button" nz-button nzSize="small" (click)="onSelectNext()">Next</button>
+        <button
+          type="button"
+          nz-button
+          nzSize="small"
+          aria-label="Select the next polygon"
+          (click)="onSelectNext()"
+        >
+          Next
+        </button>
         @if (selectedPolygon(); as selected) {
           <button
             type="button"

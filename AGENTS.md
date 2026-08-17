@@ -9,6 +9,9 @@ must respect while changing it.
 - Never disable TypeScript strictness, lint rules or tests to make something pass, and never
   raise a budget or relax a config to hide a problem.
 - Never add a dependency without stating why an existing one cannot do the job.
+- No tunable value is written inline. Timeouts, limits, sizes, colors and SEO metadata belong in
+  `src/app/core/config/` (defaults + `src/environments/*`, validated by the Zod schema); code
+  reads them through `APP_CONFIG` or, where there is no injector, the resolved `appConfig`.
 - Fetch current docs before relying on API details for Angular, NgRx, NG-ZORRO, RxJS, Vitest or
   Playwright — this project runs Angular 22 and pre-release NgRx `22.0.0-rc.0`, where training
   data is often wrong.
@@ -21,13 +24,13 @@ must respect while changing it.
 
 ## Repository map
 
-| Path                  | Holds                                                                       |
-| --------------------- | --------------------------------------------------------------------------- |
-| `src/app/core/`       | app-wide infrastructure: API config token, HTTP interceptor, `CLOCK`        |
-| `src/app/shared/`     | reusable framework-free rules (currently query normalization)               |
-| `src/app/features/*/` | self-contained features: `domain/`, `data-access/`, `state/`, `ui/`, facade |
-| `src/app/shell/`      | composition: the page component and cross-feature effects                   |
-| `e2e/`                | Playwright specs; `*.mobile.spec.ts` runs on the phone project only         |
+| Path                  | Holds                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------- |
+| `src/app/core/`       | app-wide infrastructure: layered app config, API config token, HTTP interceptor, `CLOCK`, SEO |
+| `src/app/shared/`     | reusable framework-free rules (currently query normalization)                                 |
+| `src/app/features/*/` | self-contained features: `domain/`, `data-access/`, `state/`, `ui/`, facade                   |
+| `src/app/shell/`      | composition: the page component and cross-feature effects                                     |
+| `e2e/`                | Playwright specs; `*.mobile.spec.ts` runs on the phone project only                           |
 
 Create `core/`, `shared/` or feature subfolders only when a real file needs them. Do not add
 `utils/`, `helpers/` or `common/` buckets.
@@ -72,8 +75,8 @@ Create `core/`, `shared/` or feature subfolders only when a real file needs them
   `exhaustMap` plus the `status`/`page` guard for pagination (drop duplicates). Swapping either
   for `mergeMap` reintroduces duplicate or out-of-order pages.
 - Injectable seams keep effects and reducers deterministic: `CLOCK` for timestamps, `POLYGON_ID`
-  for ids, `OPENVERSE_API_CONFIG` for the base URL. Do not call `Date.now()`,
-  `crypto.randomUUID()` or hardcode the URL directly.
+  for ids, `APP_CONFIG` (and the narrower `OPENVERSE_API_CONFIG`) for settings. Do not call
+  `Date.now()`, `crypto.randomUUID()` or hardcode the URL directly.
 
 ## Canvas and polygon constraints
 

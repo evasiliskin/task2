@@ -1,16 +1,24 @@
-<button type="button" class="search-result-item" (click)="selected.emit()">
-  <img
-    class="search-result-item__thumbnail"
-    [src]="result().thumbnailUrl"
-    [alt]="result().title"
-    loading="lazy"
-    width="88"
-    height="88"
-  />
-  <span class="search-result-item__meta">
-    <span class="search-result-item__title">{{ result().title }}</span>
-    @if (result().creator) {
-      <span class="search-result-item__creator">by {{ result().creator }}</span>
-    }
-  </span>
-</button>
+<article class="search-result-item">
+  <figure class="search-result-item__figure">
+    <img
+      class="search-result-item__thumbnail"
+      [src]="result().thumbnailUrl"
+      [alt]="result().title"
+      loading="lazy"
+      width="88"
+      height="88"
+    />
+    <figcaption class="search-result-item__meta">
+      <span class="search-result-item__title">{{ result().title }}</span>
+      @if (result().creator) {
+        <span class="search-result-item__creator">by {{ result().creator }}</span>
+      }
+    </figcaption>
+  </figure>
+  <button
+    type="button"
+    class="search-result-item__open"
+    [attr.aria-label]="'Open ' + result().title + ' in the polygon editor'"
+    (click)="selected.emit()"
+  ></button>
+</article>

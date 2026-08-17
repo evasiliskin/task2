@@ -31,6 +31,7 @@ The following video demonstrates the implemented functionality and the main user
 | UI kit    | NG-ZORRO (Ant Design) 22, Angular CDK 22 (virtual scroll, a11y)      |
 | Rendering | Native `<canvas>` 2D context, no drawing library                     |
 | Tests     | Vitest via `@angular/build:unit-test` (jsdom), Playwright for e2e    |
+| Config    | Zod Mini schema validating a layered defaults + environment object   |
 | Tooling   | pnpm, Angular ESLint (flat config), Prettier, Husky                  |
 
 NgRx is pinned to `22.0.0-rc.0` because no stable NgRx 22 exists yet. `@angular/cdk` is forced
@@ -68,15 +69,28 @@ Production build with prerendering. Output is plain static files in `dist/fronte
 
 ## Configuration
 
-There are no `.env` files and no `environments/` directory; nothing about the app is build-time
-configurable. The one piece of runtime configuration is the Openverse base URL, supplied by the
-`OPENVERSE_API_CONFIG` injection token
-([openverse-api.config.ts](src/app/core/api/openverse/openverse-api.config.ts), default
-`https://api.openverse.org/v1`); override it by providing the token. `SEARCH_RESULTS_PAGE_SIZE`
-(20) lives next to it.
+Every tunable value — API base URL and page size, HTTP timeout and retry policy, search debounce
+and cache, polygon limits and canvas colors, SEO metadata — lives in one hierarchical object under
+[src/app/core/config/](src/app/core/config). Nothing in the app hard-codes them.
 
-`https://image-search.example.com/` in [index.html](src/index.html), `public/robots.txt` and
-`public/sitemap.xml` is a placeholder origin — replace it with the real one before deploying.
+Three layers resolve at build time:
+
+1. [app-config.defaults.ts](src/app/core/config/app-config.defaults.ts) — the base values.
+2. `src/environments/environment.ts`, replaced by `environment.production.ts` in the production
+   build (`fileReplacements` in [angular.json](angular.json)). An environment states only what
+   differs; the rest falls through to the defaults.
+3. [app-config.schema.ts](src/app/core/config/app-config.schema.ts) — a Zod schema that validates
+   the merged result and throws `AppConfigError`, naming the offending path, rather than letting a
+   bad value reach the app. Zod is used because neither Angular nor anything already in the
+   project validates a plain configuration object at runtime.
+
+Injectable code reads the config through the `APP_CONFIG` token (or the narrower
+`OPENVERSE_API_CONFIG` seam) and can be overridden per test; reducers and pure functions, which
+have no injector, import the resolved `appConfig` directly.
+
+`https://image-search.example.com` in `environment.production.ts` is a placeholder origin —
+replace it with the real one before deploying, and keep `public/robots.txt` and
+`public/sitemap.xml` in step (`seo-public-assets.spec.ts` fails if they drift).
 
 ## Testing and quality gate
 
@@ -113,8 +127,10 @@ Feature-oriented, standalone-component app with a single route (`''` → `Search
 ```
 src/app/
   core/          app-wide infrastructure with no feature knowledge
-    api/openverse/   Openverse base URL + page size (injection token)
+    api/openverse/   Openverse settings seam (injection token over the app config)
+    config/          layered app config: defaults + environment, Zod-validated, APP_CONFIG token
     http/            error-normalizing interceptor + HttpFailure/timeout models
+    seo/             writes title/description/canonical/OG/Twitter/JSON-LD from the config
     time/            CLOCK token (injectable Date.now, keeps tests deterministic)
   shared/
     search-query/    query normalization / canonicalization / meaningfulness rules
@@ -249,6 +265,15 @@ The rotation pivot is the **arithmetic mean of the vertices**, not the area cent
 has no signed-area special cases, and stays defined for the self-intersecting shapes free-hand
 drawing can produce. `compute-centroid.spec.ts` asserts this, so changing it is deliberate.
 
+### Markup and assistive technology
+
+- A result is an `<article>` wrapping a `<figure>` (thumbnail + `<figcaption>` with title and
+  creator), with a stretched button over the card named "Open <title> in the polygon editor" —
+  the whole card stays clickable while the caption/figure pairing is what crawlers read. The
+  editor's image and canvas overlay share one `<figure>` with a visually hidden `<figcaption>`.
+- The shell keeps a permanently mounted `role="status"` region that announces the loaded result
+  count for the active query, and the results region is a `<section>` labelled by its heading.
+
 ### Interaction
 
 - Drawing starts from an explicit "Draw polygon" button (disabled until the image loads — an
@@ -264,7 +289,8 @@ drawing can produce. `compute-centroid.spec.ts` asserts this, so changing it is 
   canvas mid-gesture.
 - Keyboard: with a polygon selected the focused canvas accepts arrows (nudge), `[`/`]` (rotate
   15°), `+`/`-` (scale), `Delete`/`Backspace` (remove) and `Escape` (deselect); each action is
-  announced through the CDK live announcer. Free-hand vertex placement has no keyboard equivalent.
+  announced through the CDK live announcer, and the canvas is `aria-describedby` a hidden summary
+  of those keys. Free-hand vertex placement has no keyboard equivalent.
 - Rendering is coalesced to one paint per animation frame by `CanvasRenderScheduler`, which also
   owns device-pixel-ratio backing-store sizing.
 
@@ -272,13 +298,16 @@ drawing can produce. `compute-centroid.spec.ts` asserts this, so changing it is 
 
 - **No persistence layer.** History and polygons are in-memory NgRx state and reset on reload.
 - **Prerendered shell only.** `RenderMode.Prerender` on `/` with `outputMode: "static"` gives
-  crawlers real HTML; search results are per-user client state and were never indexable. Metadata
-  is static in `index.html` — no `Meta`/`Title` service, since nothing varies per view.
+  crawlers real HTML; search results are per-user client state and were never indexable. The
+  metadata is static in `index.html` for the production origin, and the `Seo` service rewrites
+  title, description, canonical URL, Open Graph/Twitter cards and the WebApplication JSON-LD in
+  place from the config, so a non-production environment gets its own origin. `index.spec.ts`
+  fails if the static tags drift from the production configuration.
 - **Eager modal CSS.** `ng-zorro-antd/modal/style/index.min.css` stays in the eager `styles` array
   although the dialog is lazily imported: Ant Design modal styles are global, and scoping them to
   the component would need `ViewEncapsulation.None` and blow the 8 kB `anyComponentStyle` budget.
 - **Bundle budget is 900 kB, not the default 500 kB.** The current production build measures
-  ~798 kB raw / ~191 kB transferred initial, mostly eager NG-ZORRO and CDK; the budget is set to
+  ~825 kB raw / ~199 kB transferred initial, mostly eager NG-ZORRO and CDK; the budget is set to
   warn on a real regression rather than on the existing baseline.
 - The suggestion list is a first-party ARIA combobox rather than `nz-autocomplete`, whose
   `nz-auto-option` hard-codes `role="menuitem"` — not valid inside an ARIA 1.2 combobox.

@@ -1,9 +1,16 @@
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
-import { ChangeDetectionStrategy, Component, input, output, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  output,
+  viewChild,
+} from '@angular/core';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
-import { SEARCH_RESULT_ROW_HEIGHT_PX } from '../../domain/should-load-next-page';
+import { APP_CONFIG } from '@core/config/app-config.token';
 import { SearchResult } from '../../domain/search-result.model';
 import { SearchResultItem } from '../search-result-item/search-result-item.component';
 import { VirtualListSemantics } from './virtual-list-semantics.directive';
@@ -39,8 +46,8 @@ export class SearchResultsList {
   readonly scrolled = output<VisibleRange>();
   readonly retry = output<void>();
 
-  protected readonly rowHeightPx = SEARCH_RESULT_ROW_HEIGHT_PX;
-  protected readonly rowHeightStyle = `${SEARCH_RESULT_ROW_HEIGHT_PX}px`;
+  protected readonly rowHeightPx = inject(APP_CONFIG).search.results.rowHeightPx;
+  protected readonly rowHeightStyle = `${this.rowHeightPx}px`;
 
   private readonly viewport = viewChild(CdkVirtualScrollViewport);
 
@@ -52,7 +59,7 @@ export class SearchResultsList {
     const viewportSize = this.viewport()?.getViewportSize() ?? 0;
     this.scrolled.emit({
       firstVisibleIndex,
-      visibleRowCount: Math.ceil(viewportSize / SEARCH_RESULT_ROW_HEIGHT_PX),
+      visibleRowCount: Math.ceil(viewportSize / this.rowHeightPx),
     });
   }
 }
