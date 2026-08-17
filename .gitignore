@@ -51,4 +51,5 @@ Thumbs.db
 
 # AI skills
 .ai/
+.claude
 docs/
